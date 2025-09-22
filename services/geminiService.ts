@@ -1,6 +1,6 @@
 import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import type { Part } from "@google/genai";
-import type { ChatMessage, Document, UploadedFile } from '../types';
+import type { ChatMessage, Document, UploadedFile, AnalyzedBQ } from '../types';
 
 // Ensure API_KEY is available. In a real app, this would be more robustly handled.
 if (!process.env.API_KEY) {
@@ -43,43 +43,65 @@ export const analyzeFloorPlan = async (imageData: string, mimeType: string): Pro
         };
 
         const textPart: Part = {
-            text: "Analyze this floor plan and generate a detailed Bill of Quantities (BQ) in JSON format. Identify key elements and structure it by construction stages (e.g., Substructure, Superstructure, Finishes). For each item, provide a description, unit, quantity, an estimated Kenyan Shilling (KES) unit rate, and total cost. Also, include a reasonable material wastage percentage. Finally, provide a list of suggestions for alternative materials or cost-saving construction methods."
+            text: `
+            Analyze this architectural floor plan as an expert Quantity Surveyor in Kenya. Perform a comprehensive analysis and generate a detailed Bill of Quantities (BQ) in the specified JSON format.
+            
+            Follow these steps in your reasoning:
+            1.  **Visual Perception:** Identify all rooms, walls (internal/external), doors, windows, and major structural elements. Extract or estimate dimensions.
+            2.  **Quantification:** Apply the Standard Method of Measurement (SMM) principles to convert the visual data into quantified items. Group items logically by trade (e.g., Substructure, Walls, Finishes).
+            3.  **Costing & Enrichment:** For each item, provide a realistic, localized unit rate in Kenyan Shillings (KES). Include a standard wastage factor (e.g., 5% as 0.05). Calculate the total cost: (quantity * unitRateKES) * (1 + wastageFactor). Also calculate the total wastage cost.
+            4.  **Advisory & Optimization:** Review the entire BQ. Provide a list of actionable, intelligent suggestions for alternative materials, alternative construction methods, or general cost-saving tips relevant to the Kenyan context.
+            5.  **Summary:** Calculate the overall total estimated cost and total wastage cost. Provide a confidence score (0.0 to 1.0) based on the clarity of the drawing.
+
+            The final output MUST be a single, valid JSON object matching the provided schema.
+            `
         };
         
+        // FIX: The `responseSchema` was incorrectly typed as `Type.OBJECT`, which is a string enum.
+        // The type annotation has been removed to allow TypeScript to correctly infer the object's shape.
         const responseSchema = {
             type: Type.OBJECT,
             properties: {
-                projectName: { type: Type.STRING },
+                summary: {
+                    type: Type.OBJECT,
+                    properties: {
+                        totalEstimatedCostKES: { type: Type.NUMBER },
+                        totalWastageCostKES: { type: Type.NUMBER },
+                        confidenceScore: { type: Type.NUMBER, description: "AI confidence in the estimate, from 0.0 to 1.0" },
+                    },
+                    required: ["totalEstimatedCostKES", "totalWastageCostKES", "confidenceScore"]
+                },
                 billOfQuantities: {
                     type: Type.ARRAY,
                     items: {
                         type: Type.OBJECT,
                         properties: {
-                            trade: { type: Type.STRING },
-                            items: {
-                                type: Type.ARRAY,
-                                items: {
-                                    type: Type.OBJECT,
-                                    properties: {
-                                        description: { type: Type.STRING },
-                                        unit: { type: Type.STRING },
-                                        quantity: { type: Type.NUMBER },
-                                        unitRateKES: { type: Type.NUMBER, description: "Estimated unit rate in Kenyan Shillings (KES)" },
-                                        totalCostKES: { type: Type.NUMBER, description: "Total estimated cost in Kenyan Shillings (KES)" },
-                                        materialWastagePercentage: { type: Type.NUMBER, description: "Estimated material wastage percentage" }
-                                    },
-                                    required: ["description", "unit", "quantity", "unitRateKES", "totalCostKES", "materialWastagePercentage"]
-                                }
-                            }
-                        }
+                            itemNumber: { type: Type.STRING },
+                            description: { type: Type.STRING },
+                            unit: { type: Type.STRING },
+                            quantity: { type: Type.NUMBER },
+                            unitRateKES: { type: Type.NUMBER },
+                            wastageFactor: { type: Type.NUMBER, description: "Wastage factor, e.g., 0.05 for 5%" },
+                            totalCostKES: { type: Type.NUMBER }
+                        },
+                        required: ["itemNumber", "description", "unit", "quantity", "unitRateKES", "wastageFactor", "totalCostKES"]
                     }
                 },
-                suggestions: {
+                intelligentSuggestions: {
                     type: Type.ARRAY,
-                    items: { type: Type.STRING },
-                    description: "Suggestions for alternative materials or construction methods"
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            suggestionType: { type: Type.STRING, enum: ['Alternative Material', 'Alternative Method', 'Cost-Saving Tip'] },
+                            originalItem: { type: Type.STRING },
+                            suggestion: { type: Type.STRING },
+                            impact: { type: Type.STRING }
+                        },
+                        required: ["suggestionType", "originalItem", "suggestion", "impact"]
+                    }
                 }
-            }
+            },
+            required: ["summary", "billOfQuantities", "intelligentSuggestions"]
         };
 
         const response = await ai.models.generateContent({
@@ -95,7 +117,7 @@ export const analyzeFloorPlan = async (imageData: string, mimeType: string): Pro
         return response.text;
     } catch (error) {
         console.error("Error analyzing floor plan:", error);
-        return JSON.stringify({ error: "Failed to analyze the drawing. Please ensure it's a clear floor plan and try again." });
+        return JSON.stringify({ error: "Failed to analyze the drawing. The AI model could not process the request. Please ensure the uploaded image is a clear architectural drawing and try again." });
     }
 };
 

@@ -3,44 +3,53 @@ import React from 'react';
 import type { Project } from '../../types';
 import Icon from '../ui/Icon';
 
+type View = 'dashboard' | 'projects' | 'settings';
+
 interface HeaderProps {
-  user: { name: string; company: string };
+  currentView: View;
   project: Project | null;
-  onBack: () => void;
+  onBack?: () => void;
+  onNewProject: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ user, project, onBack }) => {
+const Header: React.FC<HeaderProps> = ({ currentView, project, onBack, onNewProject }) => {
+
+  const getTitle = () => {
+    if (project) {
+      return (
+        <div className="flex items-center space-x-2 text-[#616161] text-xl">
+           <button onClick={onBack} className="hover:text-[#424242] transition-colors font-semibold">
+              <p>Projects</p>
+          </button>
+          <span className="font-semibold">&gt;</span>
+          <h1 className="text-2xl font-semibold text-[#424242]">{project.name}</h1>
+        </div>
+      );
+    }
+    switch (currentView) {
+      case 'dashboard':
+        return <h1 className="text-2xl font-semibold text-[#424242]">Dashboard</h1>;
+      case 'projects':
+        return <h1 className="text-2xl font-semibold text-[#424242]">Projects</h1>;
+      case 'settings':
+        return <h1 className="text-2xl font-semibold text-[#424242]">Settings</h1>;
+      default:
+        return null;
+    }
+  };
+
   return (
-    <header className="flex-shrink-0 bg-white h-20 flex items-center justify-between px-8 border-b border-gray-200">
-      <div>
-        {project ? (
-          <div className="flex items-center space-x-4">
-            <button onClick={onBack} className="text-gray-500 hover:text-gray-800 transition-colors">
-                <Icon name="arrow-left" className="w-6 h-6" />
-            </button>
-            <div>
-                <h1 className="text-2xl font-bold text-[#424242]">{project.name}</h1>
-                <p className="text-sm text-[#616161]">Client: {project.client}</p>
-            </div>
-          </div>
-        ) : (
-          <h1 className="text-2xl font-bold text-[#424242]">Welcome back, {user.name.split(' ')[0]}!</h1>
+    <header className="flex-shrink-0 bg-white h-20 flex items-center justify-between px-8 border-b border-[#F5F5F5]">
+      <div>{getTitle()}</div>
+      <div className="flex items-center space-x-6">
+        {(currentView === 'dashboard' || currentView === 'projects') && !project && (
+          <button 
+            onClick={onNewProject}
+            className="flex items-center justify-center space-x-2 bg-[#29B6F6] text-white font-semibold py-2.5 px-5 rounded-lg hover:bg-[#039BE5] transition-colors duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#29B6F6]">
+            <Icon name="plus" className="w-5 h-5" />
+            <span>New Project</span>
+          </button>
         )}
-      </div>
-      <div className="flex items-center space-x-4">
-        <div className="relative">
-            <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-green-400 ring-2 ring-white"></span>
-            <Icon name="chat" className="w-6 h-6 text-gray-500" />
-        </div>
-        <div className="flex items-center space-x-3 bg-gray-100 p-2 rounded-full cursor-pointer">
-          <div className="w-10 h-10 rounded-full bg-[#0D47A1] flex items-center justify-center text-white font-bold text-lg">
-            {user.name.charAt(0)}
-          </div>
-          <div className="pr-2 hidden sm:block">
-            <p className="font-semibold text-sm text-[#424242]">{user.name}</p>
-            <p className="text-xs text-[#616161]">{user.company}</p>
-          </div>
-        </div>
       </div>
     </header>
   );

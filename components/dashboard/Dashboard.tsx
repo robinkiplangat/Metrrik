@@ -8,28 +8,56 @@ interface DashboardProps {
   projects: Project[];
   onSelectProject: (project: Project) => void;
   onNewProject: () => void;
+  user: { name: string };
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ projects, onSelectProject, onNewProject }) => {
+const Dashboard: React.FC<DashboardProps> = ({ projects, onSelectProject, onNewProject, user }) => {
   return (
-    <div className="space-y-8">
+    <div className="space-y-12">
       <div>
-        <h2 className="text-3xl font-semibold text-[#424242]">Recent Projects</h2>
-        <p className="text-[#616161] mt-1">Here are the projects you've worked on recently.</p>
+        <h1 className="text-5xl font-bold text-[#424242]">Welcome back, {user.name.split(' ')[0]}!</h1>
+        <p className="text-[#616161] mt-2 text-base">Here's a look at your recent activity. Let's get started.</p>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div 
           onClick={onNewProject}
-          className="flex flex-col items-center justify-center bg-white p-6 rounded-xl border-2 border-dashed border-gray-300 hover:border-[#29B6F6] hover:bg-blue-50 transition-all duration-300 cursor-pointer min-h-[200px]">
-          <div className="w-14 h-14 rounded-full bg-[#29B6F6]/20 flex items-center justify-center mb-4">
-            <Icon name="plus" className="w-7 h-7 text-[#0D47A1]" />
+          className="bg-white p-8 rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 cursor-pointer flex items-center space-x-6 border border-gray-200">
+          <div className="w-16 h-16 rounded-full bg-[#29B6F6]/10 flex items-center justify-center">
+            <Icon name="plus" className="w-8 h-8 text-[#29B6F6]" />
           </div>
-          <h3 className="font-semibold text-lg text-[#0D47A1]">New Project</h3>
-          <p className="text-sm text-center text-[#616161]">Start a new estimate or BQ from scratch.</p>
+          <div>
+            <h3 className="font-semibold text-xl text-[#424242]">Create New Project</h3>
+            <p className="text-[#616161] mt-1">Start a new estimate or BQ from scratch.</p>
+          </div>
         </div>
-        {projects.map(project => (
-          <ProjectCard key={project.id} project={project} onSelectProject={onSelectProject} />
-        ))}
+        <div 
+          onClick={onNewProject}
+          className="bg-white p-8 rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 cursor-pointer flex items-center space-x-6 border border-gray-200">
+          <div className="w-16 h-16 rounded-full bg-[#29B6F6]/10 flex items-center justify-center">
+            <Icon name="chat" className="w-8 h-8 text-[#29B6F6]" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-xl text-[#424242]">Start a Quick Estimate</h3>
+            <p className="text-[#616161] mt-1">Jump directly into the AI chat for a quick estimate.</p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h2 className="text-2xl font-semibold text-[#424242]">Recent Projects</h2>
+         {projects.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-4">
+            {projects.map(project => (
+                <ProjectCard key={project.id} project={project} onSelectProject={onSelectProject} />
+            ))}
+            </div>
+        ) : (
+            <div className="mt-4 text-center py-16 bg-gray-50 rounded-lg">
+                <h3 className="text-lg font-semibold text-[#424242]">You don't have any projects yet.</h3>
+                <p className="text-[#616161]">Click 'Create New Project' to get started!</p>
+            </div>
+        )}
       </div>
     </div>
   );

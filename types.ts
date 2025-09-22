@@ -4,6 +4,7 @@ export interface Project {
   name: string;
   client: string;
   lastModified: string;
+  status: 'Draft' | 'In Review' | 'Completed';
 }
 
 export interface ChatMessage {
@@ -43,4 +44,34 @@ export interface UploadedFile {
     type: string; // MIME type
     uploadedAt: string;
     base64: string;
+}
+
+// --- Advanced BQ Analysis Types ---
+
+export interface BQItem {
+  itemNumber: string;
+  description: string;
+  unit: string;
+  quantity: number;
+  unitRateKES: number;
+  wastageFactor: number;
+  totalCostKES: number;
+}
+
+export interface AISuggestion {
+  suggestionType: 'Alternative Material' | 'Alternative Method' | 'Cost-Saving Tip';
+  originalItem: string;
+  suggestion: string;
+  impact: string;
+}
+
+export interface AnalyzedBQ {
+  summary: {
+    totalEstimatedCostKES: number;
+    totalWastageCostKES: number;
+    confidenceScore: number;
+  };
+  billOfQuantities: BQItem[];
+  intelligentSuggestions: AISuggestion[];
+  error?: string; // To handle analysis errors gracefully
 }

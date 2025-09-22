@@ -14,12 +14,12 @@ interface ProjectWorkspaceProps {
 type ActiveTab = 'chat' | 'documents' | 'files' | 'summary';
 
 const TabButton: React.FC<{label: string; iconName: 'chat' | 'document' | 'file' | 'dashboard'; isActive: boolean; onClick: () => void;}> = ({label, iconName, isActive, onClick}) => {
-    const activeClasses = 'bg-white text-[#0D47A1] shadow-sm';
-    const inactiveClasses = 'text-[#616161] hover:bg-gray-100 hover:text-[#424242]';
+    const activeClasses = 'text-[#0D47A1] border-b-2 border-[#FFC107]';
+    const inactiveClasses = 'text-[#616161] hover:text-[#424242] border-b-2 border-transparent';
     return (
         <button
             onClick={onClick}
-            className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-200 ${isActive ? activeClasses : inactiveClasses}`}>
+            className={`flex items-center space-x-2 px-4 py-2.5 font-medium transition-colors duration-200 ${isActive ? activeClasses : inactiveClasses}`}>
             <Icon name={iconName} className="w-5 h-5"/>
             <span>{label}</span>
         </button>
@@ -39,8 +39,8 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ project }) => {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex-shrink-0 mb-6">
-        <div className="inline-flex items-center bg-gray-200 p-1.5 rounded-xl">
+      <div className="flex-shrink-0 mb-6 border-b border-gray-200">
+        <div className="flex items-center">
             <TabButton label="AI Chat" iconName="chat" isActive={activeTab === 'chat'} onClick={() => setActiveTab('chat')} />
             <TabButton label="Documents" iconName="document" isActive={activeTab === 'documents'} onClick={() => setActiveTab('documents')} />
             <TabButton label="Files" iconName="file" isActive={activeTab === 'files'} onClick={() => setActiveTab('files')} />
@@ -50,7 +50,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ project }) => {
       <div className="flex-1 overflow-hidden">
         {activeTab === 'chat' && <ChatView project={project} messages={messages} setMessages={setMessages} />}
         {activeTab === 'documents' && <DocumentsView project={project} documents={documents} setDocuments={setDocuments} />}
-        {activeTab === 'files' && <FilesView files={files} setFiles={setFiles} />}
+        {activeTab === 'files' && <FilesView files={files} setFiles={setFiles} setDocuments={setDocuments} />}
         {activeTab === 'summary' && <SummaryReportView project={project} messages={messages} documents={documents} files={files} />}
       </div>
     </div>

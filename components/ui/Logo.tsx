@@ -3,9 +3,10 @@ import React from 'react';
 
 interface LogoProps {
   className?: string;
+  showText?: boolean;
 }
 
-const Logo: React.FC<LogoProps> = ({ className }) => {
+const Logo: React.FC<LogoProps> = ({ className, showText = true }) => {
   return (
     <div className={`flex items-center space-x-3 ${className}`}>
       <svg width="48" height="48" viewBox="0 0 100 100" className="flex-shrink-0">
@@ -58,12 +59,14 @@ const Logo: React.FC<LogoProps> = ({ className }) => {
         <path d="M62 60 C67 65, 67 65, 68 68" stroke="#616161" strokeWidth="1" fill="none" />
 
       </svg>
-      <div>
-        <span className="text-3xl font-bold text-[#424242]">
-          Q-Scribe
-        </span>
-        <p className="text-xs tracking-wider text-[#0D47A1] font-medium">AI-POWERED QUANTITY SURVEYING</p>
-      </div>
+      {showText && (
+        <div>
+          <span className="text-3xl font-bold text-[#424242]">
+            Q-Scribe
+          </span>
+          <p className="text-xs tracking-wider text-[#0D47A1] font-medium">AI-POWERED QUANTITY SURVEYING</p>
+        </div>
+      )}
     </div>
   );
 };

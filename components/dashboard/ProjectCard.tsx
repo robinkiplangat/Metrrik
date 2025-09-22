@@ -1,7 +1,6 @@
 
 import React from 'react';
 import type { Project } from '../../types';
-import Icon from '../ui/Icon';
 
 interface ProjectCardProps {
   project: Project;
@@ -27,24 +26,30 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onSelectProject }) =
     return Math.floor(seconds) + " seconds ago";
   }
 
+  const getStatusClasses = (status: Project['status']) => {
+    switch (status) {
+        case 'Draft': return 'bg-gray-200 text-gray-800';
+        case 'In Review': return 'bg-yellow-200 text-yellow-800';
+        case 'Completed': return 'bg-green-200 text-green-800';
+        default: return 'bg-gray-200 text-gray-800';
+    }
+  }
+
   return (
     <div 
       onClick={() => onSelectProject(project)}
-      className="bg-white p-6 rounded-xl shadow-sm hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer flex flex-col justify-between group min-h-[200px]">
+      className="bg-white p-6 rounded-xl border border-[#F5F5F5] hover:shadow-lg transition-shadow duration-300 cursor-pointer flex flex-col justify-between group min-h-[220px]">
       <div>
-        <div className="flex justify-between items-start">
-            <div className="w-12 h-12 rounded-lg bg-[#0D47A1]/10 flex items-center justify-center mb-4">
-                <Icon name="folder" className="w-6 h-6 text-[#0D47A1]" />
-            </div>
-            <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200 group-hover:bg-[#FFC107] transition-colors">
-                <p className="font-bold text-sm text-[#424242]">{project.client.charAt(0)}</p>
-            </div>
+        <div className="flex justify-between items-start mb-4">
+            <h3 className="font-semibold text-lg text-[#424242] leading-tight">{project.name}</h3>
+            <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${getStatusClasses(project.status)}`}>
+                {project.status}
+            </span>
         </div>
-        <h3 className="font-semibold text-lg text-[#424242] leading-tight">{project.name}</h3>
-        <p className="text-sm text-[#616161]">{project.client}</p>
+        <p className="text-base text-[#616161]">{project.client}</p>
       </div>
       <div className="mt-4 pt-4 border-t border-gray-100">
-        <p className="text-xs text-gray-500">Last updated {timeAgo(project.lastModified)}</p>
+        <p className="text-sm text-[#616161]">Last updated {timeAgo(project.lastModified)}</p>
       </div>
     </div>
   );
