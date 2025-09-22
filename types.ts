@@ -7,7 +7,7 @@ export interface Project {
 }
 
 export interface ChatMessage {
-  id: string;
+  id:string;
   sender: 'user' | 'ai';
   text: string;
   isTyping?: boolean;
@@ -22,7 +22,7 @@ export interface DocumentVersion {
 export interface Document {
     id: string;
     name: string;
-    type: 'Estimate' | 'Proposal' | 'BQ Draft' | 'Template';
+    type: 'Estimate' | 'Proposal' | 'BQ Draft' | 'Template' | 'Documentation' | 'Request';
     createdAt: string;
     content: string;
     versions: DocumentVersion[];
@@ -32,8 +32,7 @@ export interface Template {
     id: string;
     name: string;
     description: string;
-    // FIX: Added 'Template' to the type union to allow for templates of type 'Template', resolving errors in DocumentsView.tsx.
-    type: 'Estimate' | 'Proposal' | 'BQ Draft' | 'Template';
+    type: 'Estimate' | 'Proposal' | 'BQ Draft' | 'Template' | 'Documentation' | 'Request';
 }
 
 
