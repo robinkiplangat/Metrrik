@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import type { Project, ChatMessage } from '../../types';
+import type { Project, ChatMessage, Document } from '../../types';
 import { generateChatResponse } from '../../services/geminiService';
 import Icon from '../ui/Icon';
 import Logo from '../ui/Logo';
@@ -85,11 +85,73 @@ interface ChatViewProps {
     project: Project;
     messages: ChatMessage[];
     setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
+    setDocuments: React.Dispatch<React.SetStateAction<Document[]>>;
 }
 
-const ChatView: React.FC<ChatViewProps> = ({ project, messages, setMessages }) => {
+const ALL_DOC_TYPES: Document['type'][] = ['Estimate', 'Proposal', 'BQ Draft', 'Documentation', 'Request'];
+
+interface ExportChatModalProps {
+    onClose: () => void;
+    onSave: (title: string, type: Document['type']) => void;
+}
+
+const ExportChatModal: React.FC<ExportChatModalProps> = ({ onClose, onSave }) => {
+    const [title, setTitle] = useState(`Chat Export - ${new Date().toLocaleDateString()}`);
+    const [type, setType] = useState<Document['type']>('Documentation');
+
+    const handleSave = () => {
+        if (title.trim()) {
+            onSave(title, type);
+        } else {
+            alert('Please provide a title for the document.');
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
+                <div className="p-6 border-b">
+                    <h3 className="text-xl font-semibold text-[#424242]">Export Chat to Document</h3>
+                    <p className="text-sm text-gray-500 mt-1">Save the current conversation as a new project document.</p>
+                </div>
+                <div className="p-6 space-y-4">
+                    <div>
+                        <label htmlFor="docTitle" className="block text-sm font-medium text-gray-700">Document Title</label>
+                        <input
+                            type="text"
+                            id="docTitle"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#29B6F6] focus:border-[#29B6F6]"
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="docType" className="block text-sm font-medium text-gray-700">Document Type</label>
+                        <select
+                            id="docType"
+                            value={type}
+                            onChange={(e) => setType(e.target.value as Document['type'])}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-[#29B6F6] focus:border-[#29B6F6]"
+                        >
+                            {ALL_DOC_TYPES.map(docType => (
+                                <option key={docType} value={docType}>{docType}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+                <div className="p-4 bg-gray-50 border-t rounded-b-xl flex justify-end space-x-3">
+                    <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-[#424242] rounded-lg hover:bg-gray-300">Cancel</button>
+                    <button onClick={handleSave} className="px-4 py-2 bg-[#0D47A1] text-white rounded-lg hover:bg-blue-800">Save Document</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const ChatView: React.FC<ChatViewProps> = ({ project, messages, setMessages, setDocuments }) => {
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
@@ -132,6 +194,34 @@ const ChatView: React.FC<ChatViewProps> = ({ project, messages, setMessages }) =
         }
     };
 
+    const handleExportToDocument = (title: string, type: Document['type']) => {
+        const relevantMessages = messages.filter(msg => !msg.isTyping && msg.text);
+        if (relevantMessages.length === 0) {
+            alert("Cannot export an empty chat.");
+            return;
+        }
+    
+        const chatContent = relevantMessages
+            .map(msg => `### ${msg.sender === 'user' ? 'User' : 'Q-Scribe'}\n\n${msg.text}`)
+            .join('\n\n---\n\n');
+        
+        const fullContent = `# ${title}\n\n${chatContent}`;
+        
+        const newDoc: Document = {
+            id: `doc-${Date.now()}`,
+            name: title,
+            type: type,
+            // FIX: Removed extra 'new' keyword. `new Date().toISOString()` returns a string.
+            createdAt: new Date().toISOString(),
+            content: fullContent,
+            versions: [{ version: 1, createdAt: new Date().toISOString(), content: fullContent }]
+        };
+    
+        setDocuments(prev => [newDoc, ...prev]);
+        setIsExportModalOpen(false);
+        alert(`Document "${title}" has been saved to the Documents tab.`);
+    };
+
     return (
         <div className="h-full flex flex-col bg-white rounded-xl shadow-sm">
             <div className="flex-1 p-6 overflow-y-auto">
@@ -147,18 +237,33 @@ const ChatView: React.FC<ChatViewProps> = ({ project, messages, setMessages }) =
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                         placeholder="Ask for a preliminary cost estimate for a 4-bedroom maisonette in Kilimani..."
-                        className="w-full p-4 pr-16 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#29B6F6] focus:border-[#29B6F6] transition resize-none"
+                        className="w-full p-4 pr-28 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#29B6F6] focus:border-[#29B6F6] transition resize-none"
                         rows={2}
                         disabled={isLoading}
                     />
-                    <button
-                        onClick={handleSend}
-                        disabled={isLoading}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-[#29B6F6] hover:bg-[#039BE5] text-white disabled:bg-gray-300 transition-colors">
-                        <Icon name="send" className="w-6 h-6" />
-                    </button>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center space-x-2">
+                         <button
+                            onClick={() => setIsExportModalOpen(true)}
+                            disabled={isLoading}
+                            title="Export chat to document"
+                            className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-600 disabled:bg-gray-100 disabled:text-gray-400 transition-colors">
+                            <Icon name="document" className="w-6 h-6" />
+                        </button>
+                        <button
+                            onClick={handleSend}
+                            disabled={isLoading || !input.trim()}
+                            className="p-2 rounded-full bg-[#29B6F6] hover:bg-[#039BE5] text-white disabled:bg-gray-300 transition-colors">
+                            <Icon name="send" className="w-6 h-6" />
+                        </button>
+                    </div>
                 </div>
             </div>
+            {isExportModalOpen && (
+                <ExportChatModal
+                    onClose={() => setIsExportModalOpen(false)}
+                    onSave={handleExportToDocument}
+                />
+            )}
         </div>
     );
 };
