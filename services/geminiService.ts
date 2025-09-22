@@ -2,12 +2,12 @@ import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import type { Part } from "@google/genai";
 import type { ChatMessage, Document, UploadedFile, AnalyzedBQ } from '../types';
 
-// Ensure API_KEY is available. In a real app, this would be more robustly handled.
-if (!process.env.API_KEY) {
-  throw new Error("API_KEY environment variable not set.");
+// Ensure GEMINI_API_KEY is available. In a real app, this would be more robustly handled.
+if (!process.env.GEMINI_API_KEY) {
+  throw new Error("GEMINI_API_KEY environment variable not set.");
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const SYSTEM_INSTRUCTION = `You are Q-Sci, an expert AI assistant for Quantity Surveyors in Kenya. Your role is to be an intelligent co-pilot, helping with tasks like creating cost estimates, drafting Bills of Quantities (BQs), and generating professional construction documents.
 - When asked for a cost estimate, provide a clear, structured breakdown. Use realistic, localized costs for Kenya (e.g., Nairobi, Mombasa) where possible. Mention that these are preliminary estimates.
