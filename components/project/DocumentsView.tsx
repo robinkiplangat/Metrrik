@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import type { Project, Document, Template, DocumentVersion } from '../../types';
 import { generateDocumentContent } from '../../services/geminiService';
@@ -155,7 +154,7 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
 
     useEffect(() => {
         try {
-            const savedDocsRaw = localStorage.getItem(`qscribe-docs-${project.id}`);
+            const savedDocsRaw = localStorage.getItem(`qsci-docs-${project.id}`);
             if (savedDocsRaw) {
                 const savedDocs = JSON.parse(savedDocsRaw);
                 const docsWithVersions = savedDocs.map((d: any) => d.versions ? d : { ...d, versions: [{ version: 1, createdAt: d.createdAt, content: d.content }] });
@@ -171,7 +170,7 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
 
     useEffect(() => {
         if (documents.length > 0) {
-            localStorage.setItem(`qscribe-docs-${project.id}`, JSON.stringify(documents));
+            localStorage.setItem(`qsci-docs-${project.id}`, JSON.stringify(documents));
         }
     }, [documents, project.id]);
     

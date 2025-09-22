@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface LogoProps {
@@ -62,7 +61,7 @@ const Logo: React.FC<LogoProps> = ({ className, showText = true }) => {
       {showText && (
         <div>
           <span className="text-3xl font-bold text-[#424242]">
-            Q-Scribe
+            Q-Sci
           </span>
           <p className="text-xs tracking-wider text-[#0D47A1] font-medium">AI-POWERED QUANTITY SURVEYING</p>
         </div>

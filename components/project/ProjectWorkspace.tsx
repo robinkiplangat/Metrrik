@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import type { Project, ChatMessage, Document, UploadedFile } from '../../types';
 import ChatView from './ChatView';
@@ -31,7 +30,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ project }) => {
   
   // Lifted state for shared data between views
   const [messages, setMessages] = useState<ChatMessage[]>([
-      { id: '1', sender: 'ai', text: `Hello! I'm Q-Scribe, your AI assistant for this project. How can I help you with "${project.name}" today? You can ask for a cost estimate, a draft proposal, or anything else.` }
+      { id: '1', sender: 'ai', text: `Hello! I'm Q-Sci, your AI assistant for this project. How can I help you with "${project.name}" today? You can ask for a cost estimate, a draft proposal, or anything else.` }
   ]);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [files, setFiles] = useState<UploadedFile[]>([]);

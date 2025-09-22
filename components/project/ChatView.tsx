@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import type { Project, ChatMessage, Document } from '../../types';
 import { generateChatResponse } from '../../services/geminiService';
@@ -202,7 +201,7 @@ const ChatView: React.FC<ChatViewProps> = ({ project, messages, setMessages, set
         }
     
         const chatContent = relevantMessages
-            .map(msg => `### ${msg.sender === 'user' ? 'User' : 'Q-Scribe'}\n\n${msg.text}`)
+            .map(msg => `### ${msg.sender === 'user' ? 'User' : 'Q-Sci'}\n\n${msg.text}`)
             .join('\n\n---\n\n');
         
         const fullContent = `# ${title}\n\n${chatContent}`;

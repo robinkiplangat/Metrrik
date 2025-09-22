@@ -9,12 +9,12 @@ if (!process.env.API_KEY) {
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const SYSTEM_INSTRUCTION = `You are Q-Scribe, an expert AI assistant for Quantity Surveyors in Kenya. Your role is to be an intelligent co-pilot, helping with tasks like creating cost estimates, drafting Bills of Quantities (BQs), and generating professional construction documents.
+const SYSTEM_INSTRUCTION = `You are Q-Sci, an expert AI assistant for Quantity Surveyors in Kenya. Your role is to be an intelligent co-pilot, helping with tasks like creating cost estimates, drafting Bills of Quantities (BQs), and generating professional construction documents.
 - When asked for a cost estimate, provide a clear, structured breakdown. Use realistic, localized costs for Kenya (e.g., Nairobi, Mombasa) where possible. Mention that these are preliminary estimates.
 - When analyzing drawings, identify key architectural elements and provide estimated quantities.
 - Your tone should be professional, intelligent, clear, and supportive.
 - All responses should be formatted using markdown for clarity (e.g., headings, bold text, lists, tables).
-- Do not mention you are an AI. Act as the Q-Scribe tool.`;
+- Do not mention you are an AI. Act as the Q-Sci tool.`;
 
 export const generateChatResponse = async (prompt: string): Promise<string> => {
   try {
@@ -208,7 +208,7 @@ export const generateDocumentContent = async (prompt: string, type: Document['ty
       model: 'gemini-2.5-flash',
       contents: specializedPrompt,
       config: {
-        systemInstruction: `You are Q-Scribe, an expert AI assistant for Quantity Surveyors in Kenya. Your task is to generate high-quality construction documents. Your tone is professional and authoritative.`,
+        systemInstruction: `You are Q-Sci, an expert AI assistant for Quantity Surveyors in Kenya. Your task is to generate high-quality construction documents. Your tone is professional and authoritative.`,
       },
     });
     return response.text;

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Logo from '../ui/Logo';
 
@@ -24,7 +23,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             <button 
               onClick={onLogin}
               className="bg-[#29B6F6] text-white font-semibold py-3 px-8 rounded-lg hover:bg-[#039BE5] transition-colors duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#29B6F6]">
-              Discover Q-Scribe
+              Discover Q-Sci
             </button>
              <a href="#" className="font-semibold text-[#29B6F6] hover:underline">
                 Learn More
@@ -32,7 +31,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           </div>
         </div>
         
-        <p className="text-sm text-gray-400">&copy; {new Date().getFullYear()} Q-Scribe. All rights reserved.</p>
+        <p className="text-sm text-gray-400">&copy; {new Date().getFullYear()} Q-Sci. All rights reserved.</p>
       </div>
       
       {/* Right side image */}
