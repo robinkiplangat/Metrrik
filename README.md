@@ -1,5 +1,6 @@
 # Q-Sci: Your Co-Pilot for Construction Intelligence
-<<img width="1206" height="734" alt="Screenshot 2025-09-22 at 16 42 16" src="https://github.com/user-attachments/assets/b1ac16ce-8d8f-447b-90ac-60a0caa1ba29" />
+
+![Q-Sci Dashboard](https://i.imgur.com/example-screenshot.png) <!-- Replace with an actual screenshot -->
 
 Q-Sci is an AI-native platform designed to serve as an intelligent co-pilot for Quantity Surveyors, contractors, and builders. It streamlines the creation of essential construction documentation, from preliminary estimates to detailed Bills of Quantities (BQs), by leveraging the power of the Google Gemini API.
 
