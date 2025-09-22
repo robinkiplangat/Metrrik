@@ -7,6 +7,7 @@ import ProjectWorkspace from './components/project/ProjectWorkspace';
 import Header from './components/layout/Header';
 import ProjectsView from './components/projects/ProjectsView';
 import SettingsView from './components/settings/SettingsView';
+import LandingPage from './components/layout/LandingPage';
 
 // Mock data for initial projects
 const initialProjects: Project[] = [
@@ -20,10 +21,14 @@ const initialProjects: Project[] = [
 type View = 'dashboard' | 'projects' | 'settings';
 
 const App: React.FC = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const user = { name: 'Purity W.', company: 'PW Surveyors' };
+
+  const handleLogin = () => setIsLoggedIn(true);
+  const handleLogout = () => setIsLoggedIn(false);
 
   const handleSelectProject = (project: Project) => {
     setSelectedProject(project);
@@ -67,12 +72,16 @@ const App: React.FC = () => {
     }
   };
 
+  if (!isLoggedIn) {
+    return <LandingPage onLogin={handleLogin} />;
+  }
 
   return (
     <div className="flex h-screen bg-[#F5F5F5] text-[#616161]">
       <Sidebar 
         currentView={selectedProject ? 'projects' : currentView} 
-        onSetView={handleSetView} 
+        onSetView={handleSetView}
+        onLogout={handleLogout}
       />
       <main className="flex-1 flex flex-col overflow-hidden">
         <Header 

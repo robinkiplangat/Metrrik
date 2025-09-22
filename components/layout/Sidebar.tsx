@@ -29,9 +29,10 @@ const NavItem: React.FC<NavItemProps> = ({ iconName, label, active = false, onCl
 interface SidebarProps {
     currentView: View;
     onSetView: (view: View) => void;
+    onLogout: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentView, onSetView }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentView, onSetView, onLogout }) => {
   const user = { name: 'Purity W.', company: 'PW Surveyors' };
   
   return (
@@ -45,14 +46,19 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onSetView }) => {
         <NavItem iconName="settings" label="Settings" active={currentView === 'settings'} onClick={() => onSetView('settings')} />
       </nav>
       <div className="mt-auto p-4 border-t border-white/20">
-        <div onClick={() => alert('Open Clerk User Profile Modal...')} className="flex items-center space-x-3 cursor-pointer p-2 rounded-md hover:bg-white/10">
+        <div className="flex items-center space-x-3 p-2 rounded-md">
           <div className="w-10 h-10 rounded-full bg-[#FFC107] flex items-center justify-center text-[#0D47A1] font-bold text-lg">
             {user.name.charAt(0)}
           </div>
-          <div>
+          <div className="flex-1">
             <p className="font-semibold text-sm text-white">{user.name}</p>
             <p className="text-xs text-gray-300">{user.company}</p>
           </div>
+           <button onClick={onLogout} title="Log Out" className="p-2 rounded-full hover:bg-white/10">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+          </button>
         </div>
       </div>
     </aside>
