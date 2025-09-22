@@ -16,6 +16,7 @@ const VisualPlanEditor: React.FC<VisualPlanEditorProps> = ({ file, onClose, onSa
     const [context, setContext] = useState<CanvasRenderingContext2D | null>(null);
     const [tool, setTool] = useState<Tool>('rect');
     const [color, setColor] = useState('#EF5350'); // A reddish color
+    const [isDirty, setIsDirty] = useState(false);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -56,12 +57,24 @@ const VisualPlanEditor: React.FC<VisualPlanEditorProps> = ({ file, onClose, onSa
                 context.fillText(text, x, y);
             }
         }
+        setIsDirty(true);
     };
     
     const handleSave = () => {
         const canvas = canvasRef.current;
         if (canvas) {
+            setIsDirty(false);
             onSave(canvas.toDataURL(file.type));
+        }
+    };
+
+    const handleClose = () => {
+        if (isDirty) {
+            if (window.confirm("You have unsaved changes. Are you sure you want to discard them?")) {
+                onClose();
+            }
+        } else {
+            onClose();
         }
     };
 
@@ -78,7 +91,7 @@ const VisualPlanEditor: React.FC<VisualPlanEditorProps> = ({ file, onClose, onSa
                     <input type="color" value={color} onChange={e => setColor(e.target.value)} className="w-8 h-8 rounded border-none bg-gray-700 cursor-pointer" />
                 </div>
                 <div className="flex items-center space-x-3">
-                    <button onClick={onClose} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500">Cancel</button>
+                    <button onClick={handleClose} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500">Cancel</button>
                     <button onClick={handleSave} className="px-4 py-2 bg-[#29B6F6] text-white rounded-lg hover:bg-[#039BE5]">Save Annotations</button>
                 </div>
             </div>

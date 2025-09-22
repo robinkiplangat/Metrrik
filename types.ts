@@ -34,6 +34,8 @@ export interface Template {
     name: string;
     description: string;
     type: 'Estimate' | 'Proposal' | 'BQ Draft' | 'Template' | 'Documentation' | 'Request';
+    content?: string; // For custom templates
+    isCustom?: boolean; // To differentiate user-created templates
 }
 
 
@@ -44,6 +46,7 @@ export interface UploadedFile {
     type: string; // MIME type
     uploadedAt: string;
     base64: string;
+    status?: 'uploading' | 'completed';
 }
 
 // --- Advanced BQ Analysis Types ---
@@ -56,6 +59,12 @@ export interface BQItem {
   unitRateKES: number;
   wastageFactor: number;
   totalCostKES: number;
+  boundingBox?: { // Optional coordinates for visual feedback on plans
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
 }
 
 export interface AISuggestion {
@@ -70,6 +79,10 @@ export interface AnalyzedBQ {
     totalEstimatedCostKES: number;
     totalWastageCostKES: number;
     confidenceScore: number;
+    regionalPricingDifferences?: Array<{ // Optional regional pricing analysis
+        region: string;
+        percentageDifference: number;
+    }>;
   };
   billOfQuantities: BQItem[];
   intelligentSuggestions: AISuggestion[];

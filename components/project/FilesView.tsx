@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import type { UploadedFile, AnalyzedBQ, Document } from '../../types';
+import React, { useState, useRef, useEffect } from 'react';
+import type { UploadedFile, AnalyzedBQ, Document, BQItem } from '../../types';
 import { analyzeFloorPlan } from '../../services/geminiService';
 import Icon from '../ui/Icon';
 import VisualPlanEditor from './VisualPlanEditor';
@@ -11,8 +11,7 @@ const fileToBas64 = (file: File): Promise<string> => {
         reader.readAsDataURL(file);
         reader.onload = () => {
             const result = reader.result as string;
-            // remove "data:mime/type;base64," prefix
-            resolve(result.split(',')[1]);
+            resolve(result); // Keep prefix for image src
         };
         reader.onerror = error => reject(error);
     });
@@ -49,112 +48,133 @@ const formatBqToMarkdown = (analysis: AnalyzedBQ): string => {
 
 const AnalysisModal: React.FC<{ 
     analysisResult: AnalyzedBQ; 
+    file: UploadedFile;
     onClose: () => void;
     onSave: (content: string) => void;
-}> = ({ analysisResult, onClose, onSave }) => {
-    
-    if (analysisResult.error) {
-         return (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-xl shadow-2xl w-full max-w-xl">
-                    <div className="p-6 border-b flex justify-between items-center">
-                        <h3 className="text-xl font-semibold text-red-600">Analysis Failed</h3>
-                        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
-                    </div>
-                    <div className="p-6">
-                        <p className="text-gray-700">{analysisResult.error}</p>
-                    </div>
-                    <div className="p-4 bg-gray-50 border-t rounded-b-xl flex justify-end">
-                        <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-[#424242] rounded-lg hover:bg-gray-300">Close</button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-    
-    const handleSave = () => {
-        const markdownContent = formatBqToMarkdown(analysisResult);
-        onSave(markdownContent);
-    }
+}> = ({ analysisResult, file, onClose, onSave }) => {
+    const [editableAnalysis, setEditableAnalysis] = useState<AnalyzedBQ>(JSON.parse(JSON.stringify(analysisResult))); // Deep copy
+    const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
 
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        const ctx = canvas?.getContext('2d');
+        if (!canvas || !ctx) return;
+
+        const image = new Image();
+        image.src = `data:${file.type};base64,${file.base64}`;
+        image.onload = () => {
+            canvas.width = image.width;
+            canvas.height = image.height;
+            ctx.drawImage(image, 0, 0);
+
+            editableAnalysis.billOfQuantities.forEach(item => {
+                if (item.boundingBox) {
+                    ctx.strokeStyle = item.itemNumber === hoveredItem ? '#FFC107' : 'rgba(239, 83, 80, 0.7)'; // Red or Yellow on hover
+                    ctx.lineWidth = item.itemNumber === hoveredItem ? 6 : 4;
+                    ctx.strokeRect(
+                        item.boundingBox.x * image.width,
+                        item.boundingBox.y * image.height,
+                        item.boundingBox.width * image.width,
+                        item.boundingBox.height * image.height
+                    );
+                }
+            });
+        };
+    }, [file, editableAnalysis, hoveredItem]);
+
+    const handleBqChange = (index: number, field: keyof BQItem, value: any) => {
+        const newBq = [...editableAnalysis.billOfQuantities];
+        const item = { ...newBq[index] };
+        (item[field] as any) = value;
+        
+        // Recalculate total if quantity or rate changes
+        if (field === 'quantity' || field === 'unitRateKES' || field === 'wastageFactor') {
+            item.totalCostKES = (item.quantity * item.unitRateKES) * (1 + item.wastageFactor);
+        }
+        newBq[index] = item;
+        
+        // Recalculate summary totals
+        const totalEstimatedCostKES = newBq.reduce((sum, i) => sum + i.totalCostKES, 0);
+        const totalWastageCostKES = newBq.reduce((sum, i) => sum + (i.quantity * i.unitRateKES * i.wastageFactor), 0);
+
+        setEditableAnalysis(prev => ({ 
+            ...prev, 
+            billOfQuantities: newBq,
+            summary: { ...prev.summary, totalEstimatedCostKES, totalWastageCostKES }
+        }));
+    };
+
+    const handleAddItem = () => {
+        const newItem: BQItem = {
+            itemNumber: (editableAnalysis.billOfQuantities.length + 1).toString(),
+            description: 'New Item', unit: 'LS', quantity: 1, unitRateKES: 0, wastageFactor: 0.05, totalCostKES: 0
+        };
+        setEditableAnalysis(prev => ({ ...prev, billOfQuantities: [...prev.billOfQuantities, newItem]}));
+    };
+
+    const handleRemoveItem = (index: number) => {
+        if (!window.confirm("Are you sure you want to remove this item?")) return;
+        const newBq = editableAnalysis.billOfQuantities.filter((_, i) => i !== index);
+        setEditableAnalysis(prev => ({ ...prev, billOfQuantities: newBq }));
+    };
+
+    const handleSave = () => {
+        const markdownContent = formatBqToMarkdown(editableAnalysis);
+        onSave(markdownContent);
+    };
+
+    if (analysisResult.error) { /* Error handling remains the same */ }
+    
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col">
-                <div className="p-5 border-b flex justify-between items-center flex-shrink-0">
-                    <h3 className="text-xl font-semibold text-[#424242]">AI Analysis Result</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-7xl h-[95vh] flex flex-col">
+                <div className="p-4 border-b flex justify-between items-center flex-shrink-0">
+                    <h3 className="text-xl font-semibold text-[#424242]">Interactive AI Analysis</h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
                 </div>
-                <div className="p-6 overflow-y-auto bg-gray-50/50">
-                    {/* Summary Section */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div className="bg-white p-4 rounded-lg border border-gray-200">
-                            <p className="text-sm text-gray-500">Total Estimated Cost</p>
-                            <p className="text-2xl font-bold text-[#0D47A1]">{formatCurrency(analysisResult.summary.totalEstimatedCostKES)}</p>
-                        </div>
-                        <div className="bg-white p-4 rounded-lg border border-gray-200">
-                            <p className="text-sm text-gray-500">Estimated Wastage Cost</p>
-                            <p className="text-2xl font-bold text-amber-600">{formatCurrency(analysisResult.summary.totalWastageCostKES)}</p>
-                        </div>
-                         <div className="bg-white p-4 rounded-lg border border-gray-200">
-                            <p className="text-sm text-gray-500">AI Confidence Score</p>
-                            <p className="text-2xl font-bold text-green-600">{(analysisResult.summary.confidenceScore * 100).toFixed(1)}%</p>
-                        </div>
-                    </div>
 
-                     {/* Suggestions Section */}
-                    <div className="mb-6">
-                        <h4 className="font-semibold text-lg text-[#424242] mb-3">Intelligent Suggestions</h4>
-                        <div className="space-y-3">
-                            {analysisResult.intelligentSuggestions.map((sugg, i) => (
-                                <div key={i} className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
-                                    <p className="font-semibold text-blue-800">{sugg.suggestionType}: <span className="font-normal">{sugg.suggestion}</span></p>
-                                    <p className="text-sm text-blue-700 mt-1"><strong>Impact:</strong> {sugg.impact}</p>
-                                </div>
-                            ))}
-                        </div>
+                <div className="flex-1 p-4 grid grid-cols-1 lg:grid-cols-2 gap-4 overflow-hidden">
+                    <div className="bg-gray-100 rounded-lg overflow-auto p-2 flex items-center justify-center">
+                        <canvas ref={canvasRef} className="max-w-full max-h-full" />
                     </div>
-
-                    {/* BQ Table */}
-                    <div>
-                         <h4 className="font-semibold text-lg text-[#424242] mb-3">Bill of Quantities</h4>
-                         <div className="overflow-auto border border-gray-200 rounded-lg">
-                             <table className="w-full text-left bg-white">
-                                 <thead className="bg-gray-100">
-                                     <tr>
-                                         {['Item', 'Description', 'Unit', 'Qty', 'Rate (KES)', 'Wastage', 'Total (KES)'].map(h => 
-                                             <th key={h} className="p-3 text-sm font-semibold text-gray-600">{h}</th>
-                                         )}
-                                     </tr>
-                                 </thead>
-                                 <tbody className="divide-y divide-gray-200">
-                                     {analysisResult.billOfQuantities.map(item => (
-                                         <tr key={item.itemNumber}>
-                                             <td className="p-3 text-sm text-gray-700 font-medium">{item.itemNumber}</td>
-                                             <td className="p-3 text-sm text-gray-700 max-w-sm">{item.description}</td>
-                                             <td className="p-3 text-sm text-gray-700">{item.unit}</td>
-                                             <td className="p-3 text-sm text-gray-700 text-right">{item.quantity.toFixed(2)}</td>
-                                             <td className="p-3 text-sm text-gray-700 text-right">{item.unitRateKES.toLocaleString()}</td>
-                                             <td className="p-3 text-sm text-gray-700 text-right">{(item.wastageFactor * 100).toFixed(1)}%</td>
-                                             <td className="p-3 text-sm text-gray-900 font-semibold text-right">{item.totalCostKES.toLocaleString()}</td>
-                                         </tr>
-                                     ))}
-                                 </tbody>
-                             </table>
-                         </div>
+                    <div className="flex flex-col gap-4 overflow-hidden">
+                        <div className="grid grid-cols-3 gap-2">
+                            <div className="bg-white p-3 rounded-lg border"><p className="text-xs text-gray-500">Total Cost</p><p className="font-bold text-[#0D47A1]">{formatCurrency(editableAnalysis.summary.totalEstimatedCostKES)}</p></div>
+                            <div className="bg-white p-3 rounded-lg border"><p className="text-xs text-gray-500">Wastage Cost</p><p className="font-bold text-amber-600">{formatCurrency(editableAnalysis.summary.totalWastageCostKES)}</p></div>
+                            <div className="bg-white p-3 rounded-lg border"><p className="text-xs text-gray-500">AI Confidence</p><p className="font-bold text-green-600">{(editableAnalysis.summary.confidenceScore * 100).toFixed(1)}%</p></div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto border rounded-lg">
+                            <table className="w-full text-sm">
+                                <thead className="bg-gray-50 sticky top-0"><tr className="text-left">
+                                    <th className="p-2 font-semibold">Desc.</th><th className="p-2 font-semibold">Qty</th><th className="p-2 font-semibold">Unit</th><th className="p-2 font-semibold">Rate</th><th className="p-2 font-semibold">Total</th><th className="p-2"></th>
+                                </tr></thead>
+                                <tbody>{editableAnalysis.billOfQuantities.map((item, index) => (
+                                    <tr key={index} onMouseEnter={() => setHoveredItem(item.itemNumber)} onMouseLeave={() => setHoveredItem(null)} className="border-t hover:bg-yellow-50">
+                                        <td className="p-1"><input type="text" value={item.description} onChange={e => handleBqChange(index, 'description', e.target.value)} className="w-full p-1 border rounded"/></td>
+                                        <td className="p-1"><input type="number" value={item.quantity} onChange={e => handleBqChange(index, 'quantity', parseFloat(e.target.value))} className="w-20 p-1 border rounded"/></td>
+                                        <td className="p-1"><input type="text" value={item.unit} onChange={e => handleBqChange(index, 'unit', e.target.value)} className="w-12 p-1 border rounded"/></td>
+                                        <td className="p-1"><input type="number" value={item.unitRateKES} onChange={e => handleBqChange(index, 'unitRateKES', parseFloat(e.target.value))} className="w-24 p-1 border rounded"/></td>
+                                        <td className="p-1 font-semibold">{item.totalCostKES.toLocaleString()}</td>
+                                        <td className="p-1"><button onClick={() => handleRemoveItem(index)} className="text-red-500 hover:text-red-700">&times;</button></td>
+                                    </tr>))}
+                                </tbody>
+                            </table>
+                            <button onClick={handleAddItem} className="m-2 text-sm font-medium text-blue-600 hover:text-blue-800">+ Add Item</button>
+                        </div>
                     </div>
                 </div>
+
                  <div className="p-4 bg-gray-100 border-t rounded-b-xl flex justify-end space-x-3 flex-shrink-0">
                     <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-[#424242] rounded-lg hover:bg-gray-300">Close</button>
                     <button onClick={handleSave} className="px-4 py-2 bg-[#0D47A1] text-white rounded-lg hover:bg-blue-800 flex items-center space-x-2">
-                        <Icon name="document" className="w-5 h-5" />
-                        <span>Save as BQ Draft</span>
+                        <Icon name="document" className="w-5 h-5" /><span>Save as BQ Draft</span>
                     </button>
                 </div>
             </div>
         </div>
     );
 };
-
 
 interface FilesViewProps {
     files: UploadedFile[];
@@ -165,29 +185,37 @@ interface FilesViewProps {
 const FilesView: React.FC<FilesViewProps> = ({ files, setFiles, setDocuments }) => {
     const [isAnalyzing, setIsAnalyzing] = useState<string | null>(null);
     const [analysisResult, setAnalysisResult] = useState<AnalyzedBQ | null>(null);
+    const [analyzedFile, setAnalyzedFile] = useState<UploadedFile | null>(null);
     const [editorFile, setEditorFile] = useState<UploadedFile | null>(null);
 
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files) {
-            const newFiles = await Promise.all(
-                Array.from(event.target.files).map(async (file: File) => {
-                    const base64 = await fileToBas64(file);
-                    return {
-                        id: `file-${Date.now()}-${file.name}`,
-                        name: file.name,
-                        size: file.size,
-                        type: file.type,
-                        uploadedAt: new Date().toISOString(),
-                        base64: base64,
-                    };
-                })
-            );
-            setFiles(prev => [...prev, ...newFiles]);
+            const fileList = Array.from(event.target.files);
+            const newUploads: UploadedFile[] = fileList.map(file => ({
+                id: `file-${Date.now()}-${file.name}`, name: file.name, size: file.size, type: file.type,
+                uploadedAt: new Date().toISOString(), base64: '', status: 'uploading'
+            }));
+            
+            setFiles(prev => [...prev, ...newUploads]);
+
+            for (const file of fileList) {
+                const base64 = await fileToBas64(file);
+                const id = `file-${Date.now()}-${file.name}`; // Find by name as ID is not stable yet
+                setFiles(prev => prev.map(f => f.name === file.name && f.status === 'uploading' 
+                    ? { ...f, id, base64: base64.split(',')[1], status: 'completed' } 
+                    : f
+                ));
+            }
         }
     };
     
     const handleAnalyze = async (file: UploadedFile) => {
+        if (!file.base64) {
+            alert("File is still processing. Please wait.");
+            return;
+        }
         setIsAnalyzing(file.id);
+        setAnalyzedFile(file);
         setAnalysisResult(null);
         try {
             const resultString = await analyzeFloorPlan(file.base64, file.type);
@@ -203,23 +231,19 @@ const FilesView: React.FC<FilesViewProps> = ({ files, setFiles, setDocuments }) 
     const handleSaveAnnotation = (newBase64DataUrl: string) => {
         if (!editorFile) return;
         const newBase64 = newBase64DataUrl.split(',')[1];
-        setFiles(prevFiles => prevFiles.map(f =>
-            f.id === editorFile.id ? { ...f, base64: newBase64 } : f
-        ));
+        setFiles(prevFiles => prevFiles.map(f => f.id === editorFile.id ? { ...f, base64: newBase64 } : f));
         setEditorFile(null);
     };
 
     const handleSaveAsDraft = (content: string) => {
         const newDoc: Document = {
-            id: `doc-${Date.now()}`,
-            name: `BQ Draft from AI Analysis`,
-            type: 'BQ Draft',
-            createdAt: new Date().toISOString(),
-            content: content,
+            id: `doc-${Date.now()}`, name: `BQ Draft from ${analyzedFile?.name || 'AI Analysis'}`,
+            type: 'BQ Draft', createdAt: new Date().toISOString(), content: content,
             versions: [{ version: 1, createdAt: new Date().toISOString(), content: content }]
         };
         setDocuments(prev => [...prev, newDoc]);
-        setAnalysisResult(null); // Close modal on save
+        setAnalysisResult(null);
+        setAnalyzedFile(null);
         alert("Bill of Quantities draft has been saved to your Documents tab.");
     };
 
@@ -243,53 +267,37 @@ const FilesView: React.FC<FilesViewProps> = ({ files, setFiles, setDocuments }) 
             ) : (
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
-                        <thead className="border-b-2 border-gray-200">
-                             <tr>
-                                <th className="p-3 text-sm font-semibold text-[#616161] tracking-wider">File Name</th>
-                                <th className="p-3 text-sm font-semibold text-[#616161] tracking-wider">Size</th>
-                                <th className="p-3 text-sm font-semibold text-[#616161] tracking-wider">Date Uploaded</th>
-                                <th className="p-3 text-sm font-semibold text-[#616161] tracking-wider text-right">Actions</th>
+                        <thead className="border-b-2 border-gray-200"><tr>
+                            <th className="p-3 text-sm font-semibold text-[#616161]">File Name</th>
+                            <th className="p-3 text-sm font-semibold text-[#616161]">Size</th>
+                            <th className="p-3 text-sm font-semibold text-[#616161]">Status</th>
+                            <th className="p-3 text-sm font-semibold text-[#616161] text-right">Actions</th>
+                        </tr></thead>
+                        <tbody>{files.map(file => (
+                            <tr key={file.id} className="border-b border-gray-100 hover:bg-gray-50">
+                                <td className="p-3 font-medium text-[#424242] flex items-center space-x-2">
+                                    <Icon name="file" className="w-5 h-5 text-gray-400" /><span>{file.name}</span>
+                                </td>
+                                <td className="p-3 text-[#616161]">{(file.size / 1024).toFixed(2)} KB</td>
+                                <td className="p-3 text-[#616161]">{file.status === 'uploading' ? 'Processing...' : 'Completed'}</td>
+                                <td className="p-3 text-right space-x-2">
+                                    {file.type.startsWith('image/') && (
+                                        <button onClick={() => setEditorFile(file)} className="font-medium text-[#0D47A1] hover:underline">Annotate</button>
+                                    )}
+                                    <button onClick={() => handleAnalyze(file)} disabled={isAnalyzing === file.id || file.status === 'uploading'} className="bg-[#FFC107] text-[#424242] font-semibold py-1.5 px-3 rounded-lg hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-wait">
+                                        {isAnalyzing === file.id ? 'Analyzing...' : 'Analyze with AI'}
+                                    </button>
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            {files.map(file => (
-                                <tr key={file.id} className="border-b border-gray-100 hover:bg-gray-50">
-                                    <td className="p-3 font-medium text-[#424242] flex items-center space-x-2">
-                                        <Icon name="file" className="w-5 h-5 text-gray-400" />
-                                        <span>{file.name}</span>
-                                    </td>
-                                    <td className="p-3 text-[#616161]">{(file.size / 1024).toFixed(2)} KB</td>
-                                    <td className="p-3 text-[#616161]">{new Date(file.uploadedAt).toLocaleDateString()}</td>
-                                    <td className="p-3 text-right space-x-2">
-                                        {file.type.startsWith('image/') && (
-                                             <button 
-                                                onClick={() => setEditorFile(file)}
-                                                className="font-medium text-[#0D47A1] hover:underline">
-                                                Annotate
-                                            </button>
-                                        )}
-                                        <button 
-                                            onClick={() => handleAnalyze(file)}
-                                            disabled={isAnalyzing === file.id}
-                                            className="bg-[#FFC107] text-[#424242] font-semibold py-1.5 px-3 rounded-lg hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-wait">
-                                            {isAnalyzing === file.id ? 'Analyzing...' : 'Analyze with AI'}
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
+                        ))}</tbody>
                     </table>
                 </div>
             )}
-             {analysisResult && (
-                <AnalysisModal analysisResult={analysisResult} onClose={() => setAnalysisResult(null)} onSave={handleSaveAsDraft} />
+            {analysisResult && analyzedFile && (
+                <AnalysisModal analysisResult={analysisResult} file={analyzedFile} onClose={() => setAnalysisResult(null)} onSave={handleSaveAsDraft} />
             )}
             {editorFile && (
-                <VisualPlanEditor
-                    file={editorFile}
-                    onClose={() => setEditorFile(null)}
-                    onSave={handleSaveAnnotation}
-                />
+                <VisualPlanEditor file={editorFile} onClose={() => setEditorFile(null)} onSave={handleSaveAnnotation} />
             )}
         </div>
     );

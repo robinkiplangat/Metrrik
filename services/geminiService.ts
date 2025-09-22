@@ -44,21 +44,20 @@ export const analyzeFloorPlan = async (imageData: string, mimeType: string): Pro
 
         const textPart: Part = {
             text: `
-            Analyze this architectural floor plan as an expert Quantity Surveyor in Kenya. Perform a comprehensive analysis and generate a detailed Bill of Quantities (BQ) in the specified JSON format.
+            Analyze this architectural drawing (floor plan or PDF) as an expert Quantity Surveyor in Kenya. Perform a comprehensive analysis and generate a detailed Bill of Quantities (BQ) in the specified JSON format.
             
             Follow these steps in your reasoning:
             1.  **Visual Perception:** Identify all rooms, walls (internal/external), doors, windows, and major structural elements. Extract or estimate dimensions.
             2.  **Quantification:** Apply the Standard Method of Measurement (SMM) principles to convert the visual data into quantified items. Group items logically by trade (e.g., Substructure, Walls, Finishes).
-            3.  **Costing & Enrichment:** For each item, provide a realistic, localized unit rate in Kenyan Shillings (KES). Include a standard wastage factor (e.g., 5% as 0.05). Calculate the total cost: (quantity * unitRateKES) * (1 + wastageFactor). Also calculate the total wastage cost.
-            4.  **Advisory & Optimization:** Review the entire BQ. Provide a list of actionable, intelligent suggestions for alternative materials, alternative construction methods, or general cost-saving tips relevant to the Kenyan context.
-            5.  **Summary:** Calculate the overall total estimated cost and total wastage cost. Provide a confidence score (0.0 to 1.0) based on the clarity of the drawing.
+            3.  **Item Geometry:** For each quantified item in the BQ that corresponds to a distinct visual element, provide a 'boundingBox' with normalized coordinates (x, y, width, height), where (x,y) is the top-left corner.
+            4.  **Costing & Enrichment:** For each item, provide a realistic, localized unit rate in Kenyan Shillings (KES). Include a standard wastage factor. Calculate total costs. Analyze potential regional pricing differences for materials/labor between Nairobi, Mombasa, and Kisumu, and include this in 'regionalPricingDifferences'.
+            5.  **Advisory & Optimization:** Review the BQ and provide actionable, intelligent suggestions for cost-saving.
+            6.  **Summary:** Calculate overall costs and provide a confidence score based on the drawing's clarity.
 
             The final output MUST be a single, valid JSON object matching the provided schema.
             `
         };
         
-        // FIX: The `responseSchema` was incorrectly typed as `Type.OBJECT`, which is a string enum.
-        // The type annotation has been removed to allow TypeScript to correctly infer the object's shape.
         const responseSchema = {
             type: Type.OBJECT,
             properties: {
@@ -68,6 +67,17 @@ export const analyzeFloorPlan = async (imageData: string, mimeType: string): Pro
                         totalEstimatedCostKES: { type: Type.NUMBER },
                         totalWastageCostKES: { type: Type.NUMBER },
                         confidenceScore: { type: Type.NUMBER, description: "AI confidence in the estimate, from 0.0 to 1.0" },
+                        regionalPricingDifferences: { 
+                            type: Type.ARRAY,
+                            description: "Analysis of cost differences in major Kenyan cities.",
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    region: { type: Type.STRING },
+                                    percentageDifference: { type: Type.NUMBER, description: "e.g., 0.05 for 5% higher than baseline" }
+                                }
+                            }
+                        }
                     },
                     required: ["totalEstimatedCostKES", "totalWastageCostKES", "confidenceScore"]
                 },
@@ -82,7 +92,17 @@ export const analyzeFloorPlan = async (imageData: string, mimeType: string): Pro
                             quantity: { type: Type.NUMBER },
                             unitRateKES: { type: Type.NUMBER },
                             wastageFactor: { type: Type.NUMBER, description: "Wastage factor, e.g., 0.05 for 5%" },
-                            totalCostKES: { type: Type.NUMBER }
+                            totalCostKES: { type: Type.NUMBER },
+                            boundingBox: {
+                                type: Type.OBJECT,
+                                description: "Normalized coordinates of the item on the drawing.",
+                                properties: {
+                                    x: { type: Type.NUMBER },
+                                    y: { type: Type.NUMBER },
+                                    width: { type: Type.NUMBER },
+                                    height: { type: Type.NUMBER },
+                                }
+                            }
                         },
                         required: ["itemNumber", "description", "unit", "quantity", "unitRateKES", "wastageFactor", "totalCostKES"]
                     }
@@ -172,4 +192,28 @@ Format the output in clear, professional markdown.
         console.error("Error generating project summary:", error);
         return "Sorry, I encountered an error while generating the summary. Please try again.";
     }
+};
+
+export const generateDocumentContent = async (prompt: string, type: Document['type']): Promise<string> => {
+  const specializedPrompt = `
+    Based on the user's request, generate a professional '${type}' document.
+    User's request: "${prompt}"
+    
+    Structure the document logically with clear headings, lists, and tables where appropriate.
+    The content should be well-written, accurate, and ready for client presentation.
+    Format the entire output using markdown.
+  `;
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: specializedPrompt,
+      config: {
+        systemInstruction: `You are Q-Scribe, an expert AI assistant for Quantity Surveyors in Kenya. Your task is to generate high-quality construction documents. Your tone is professional and authoritative.`,
+      },
+    });
+    return response.text;
+  } catch (error) {
+    console.error("Error generating document:", error);
+    return "Sorry, an error occurred while generating the document. Please check your prompt and try again.";
+  }
 };

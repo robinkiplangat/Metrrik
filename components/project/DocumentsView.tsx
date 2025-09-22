@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import type { Project, Document, Template, DocumentVersion } from '../../types';
+import { generateDocumentContent } from '../../services/geminiService';
 import Icon from '../ui/Icon';
 
 const initialDocuments: Document[] = [
@@ -16,10 +17,11 @@ const documentTemplates: Template[] = [
     { id: 'temp-4', name: 'Preliminary Estimate', description: 'Initial high-level cost estimation for a project.', type: 'Estimate' },
 ];
 
-const ALL_DOC_TYPES: Document['type'][] = ['Estimate', 'Proposal', 'BQ Draft', 'Documentation', 'Request', 'Template'];
+const ALL_DOC_TYPES: Document['type'][] = ['Estimate', 'Proposal', 'BQ Draft', 'Documentation', 'Request'];
 
 type SortableKeys = keyof Pick<Document, 'name' | 'type' | 'createdAt'>;
 
+// ... (HistoryModal and PreviewModal components remain unchanged) ...
 interface HistoryModalProps {
     doc: Document;
     onClose: () => void;
@@ -144,13 +146,18 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
     const [previewDoc, setPreviewDoc] = useState<Document | null>(null);
     const [activeTag, setActiveTag] = useState<string>('All');
     const [sortConfig, setSortConfig] = useState<{ key: SortableKeys; direction: 'ascending' | 'descending' }>({ key: 'createdAt', direction: 'descending' });
+    const [aiDocPrompt, setAiDocPrompt] = useState('');
+    const [aiDocType, setAiDocType] = useState<Document['type']>('Estimate');
+    const [isGenerating, setIsGenerating] = useState(false);
+
+    // Dummy state for custom templates, in a real app this would be more robust
+    const [customTemplates, setCustomTemplates] = useState<Template[]>([]);
 
     useEffect(() => {
         try {
             const savedDocsRaw = localStorage.getItem(`qscribe-docs-${project.id}`);
             if (savedDocsRaw) {
                 const savedDocs = JSON.parse(savedDocsRaw);
-                 // Simple migration for old data without versions
                 const docsWithVersions = savedDocs.map((d: any) => d.versions ? d : { ...d, versions: [{ version: 1, createdAt: d.createdAt, content: d.content }] });
                 setDocuments(docsWithVersions);
             } else {
@@ -194,20 +201,47 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
         setSortConfig({ key, direction });
     };
 
+    const handleGenerateWithAI = async () => {
+        if (!aiDocPrompt.trim()) {
+            alert("Please enter a prompt for the document.");
+            return;
+        }
+        setIsGenerating(true);
+        try {
+            const content = await generateDocumentContent(aiDocPrompt, aiDocType);
+            const newDoc: Document = {
+                id: `doc-${Date.now()}`,
+                name: `AI Generated ${aiDocType}`,
+                type: aiDocType,
+                createdAt: new Date().toISOString(),
+                content: content,
+                versions: [{ version: 1, createdAt: new Date().toISOString(), content: content }]
+            };
+            setDocuments(prev => [newDoc, ...prev]);
+            setAiDocPrompt('');
+        } catch (error) {
+            alert("Failed to generate document. Please try again.");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     const createFromTemplate = (template: Template) => {
         const newDoc: Document = {
             id: `doc-${Date.now()}`,
             name: `${template.name}`,
             type: template.type,
             createdAt: new Date().toISOString(),
-            content: `This document was generated from the '${template.name}' template.`,
-            versions: [{ version: 1, createdAt: new Date().toISOString(), content: `This document was generated from the '${template.name}' template.` }]
+            content: template.content || `This document was generated from the '${template.name}' template.`,
+            versions: [{ version: 1, createdAt: new Date().toISOString(), content: template.content || `This document was generated from the '${template.name}' template.` }]
         };
-        setDocuments(prev => [...prev, newDoc]);
+        setDocuments(prev => [newDoc, ...prev]);
     };
 
     const handleRevert = (version: DocumentVersion) => {
         if (!historyDoc) return;
+        if (!window.confirm(`Are you sure you want to revert to Version ${version.version}? This will create a new version with the old content.`)) return;
+
         const updatedDoc = {
             ...historyDoc,
             content: version.content,
@@ -216,12 +250,18 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
                 {
                     version: historyDoc.versions.length + 1,
                     createdAt: new Date().toISOString(),
-                    content: `Reverted to Version ${version.version}. Original content: ${version.content.substring(0, 50)}...`,
+                    content: version.content,
                 }
             ]
         };
         setDocuments(docs => docs.map(d => d.id === updatedDoc.id ? updatedDoc : d));
         setHistoryDoc(null);
+    };
+
+    const handleDeleteDoc = (docId: string) => {
+        if (window.confirm("Are you sure you want to delete this document? This action cannot be undone.")) {
+            setDocuments(docs => docs.filter(d => d.id !== docId));
+        }
     };
 
     const handleSaveFromPreview = (docId: string, newContent: string, newType: Document['type']) => {
@@ -247,17 +287,37 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
     const allTags = ['All', ...Array.from(new Set(documents.map(d => d.type)))];
 
     return (
-        <div className="bg-white rounded-xl shadow-sm p-6 h-full flex flex-col space-y-6">
-            <div>
-                 <h3 className="text-xl font-semibold text-[#424242] mb-4">Create from Template</h3>
-                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    {documentTemplates.map(template => (
-                        <div key={template.id} onClick={() => createFromTemplate(template)} className="bg-gray-50 p-4 rounded-lg hover:bg-blue-100 hover:shadow-md transition-all cursor-pointer border border-gray-200">
-                           <h4 className="font-bold text-[#0D47A1]">{template.name}</h4>
-                           <p className="text-sm text-gray-600 mt-1">{template.description}</p>
-                        </div>
-                    ))}
-                 </div>
+        <div className="bg-white rounded-xl shadow-sm p-6 h-full flex flex-col space-y-6 overflow-hidden">
+             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                 {/* AI Generation */}
+                <div className="space-y-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h3 className="text-lg font-semibold text-[#0D47A1]">Generate Document with AI</h3>
+                    <select value={aiDocType} onChange={e => setAiDocType(e.target.value as Document['type'])} className="w-full p-2 border border-gray-300 rounded-md">
+                        {ALL_DOC_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+                    </select>
+                    <textarea 
+                        value={aiDocPrompt}
+                        onChange={e => setAiDocPrompt(e.target.value)}
+                        placeholder={`e.g., "A preliminary cost estimate for a 3-bedroom bungalow..."`}
+                        className="w-full p-2 border border-gray-300 rounded-md"
+                        rows={2}
+                    />
+                    <button onClick={handleGenerateWithAI} disabled={isGenerating} className="w-full bg-[#0D47A1] text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-800 disabled:bg-gray-400">
+                        {isGenerating ? 'Generating...' : 'Generate'}
+                    </button>
+                </div>
+                 {/* Templates */}
+                <div className="space-y-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                     <h3 className="text-lg font-semibold text-[#424242]">Create from Template</h3>
+                     <div className="grid grid-cols-2 gap-3">
+                        {documentTemplates.map(template => (
+                            <div key={template.id} onClick={() => createFromTemplate(template)} className="bg-white p-3 rounded-md hover:bg-gray-100 hover:shadow-sm transition-all cursor-pointer border">
+                               <h4 className="font-bold text-sm text-[#0D47A1]">{template.name}</h4>
+                               <p className="text-xs text-gray-600 mt-1 truncate">{template.description}</p>
+                            </div>
+                        ))}
+                     </div>
+                </div>
             </div>
 
             <div className="flex-1 flex flex-row gap-6 overflow-hidden">
@@ -276,7 +336,7 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
                 {/* Documents Table */}
                 <div className="flex-1 flex flex-col overflow-hidden">
                     <h3 className="text-xl font-semibold text-[#424242] mb-4">Project Documents</h3>
-                    <div className="overflow-auto">
+                    <div className="overflow-y-auto">
                         <table className="w-full text-left">
                             <thead className="border-b-2 border-gray-200 sticky top-0 bg-white z-10">
                                 <tr>
@@ -304,15 +364,7 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
                                         <td className="p-3 text-right space-x-3">
                                             <button onClick={() => setPreviewDoc(doc)} className="font-medium text-[#0D47A1] hover:underline">Preview</button>
                                             <button onClick={() => setHistoryDoc(doc)} className="font-medium text-[#0D47A1] hover:underline">History</button>
-                                            <div className="relative inline-block">
-                                                <details className="group">
-                                                    <summary className="font-medium text-[#0D47A1] hover:underline cursor-pointer list-none">Download</summary>
-                                                    <div className="absolute right-0 mt-2 w-32 bg-white border rounded-md shadow-lg z-20 hidden group-open:block">
-                                                        <a onClick={() => alert('Downloading PDF...')} href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">As PDF</a>
-                                                        <a onClick={() => alert('Downloading DOCX...')} href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">As DOCX</a>
-                                                    </div>
-                                                </details>
-                                            </div>
+                                            <button onClick={() => handleDeleteDoc(doc.id)} className="font-medium text-red-600 hover:underline">Delete</button>
                                         </td>
                                     </tr>
                                 ))}

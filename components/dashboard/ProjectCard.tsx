@@ -38,10 +38,10 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onSelectProject }) =
   return (
     <div 
       onClick={() => onSelectProject(project)}
-      className="bg-white p-6 rounded-xl border border-[#F5F5F5] hover:shadow-lg transition-shadow duration-300 cursor-pointer flex flex-col justify-between group min-h-[220px]">
+      className="bg-white p-6 rounded-xl border border-gray-200 hover:shadow-xl hover:-translate-y-1 transform transition-all duration-300 cursor-pointer flex flex-col justify-between group min-h-[220px]">
       <div>
         <div className="flex justify-between items-start mb-4">
-            <h3 className="font-semibold text-lg text-[#424242] leading-tight">{project.name}</h3>
+            <h3 className="font-semibold text-lg text-[#424242] leading-tight group-hover:text-[#0D47A1] transition-colors">{project.name}</h3>
             <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${getStatusClasses(project.status)}`}>
                 {project.status}
             </span>

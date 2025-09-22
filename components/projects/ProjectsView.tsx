@@ -4,6 +4,7 @@ import type { Project } from '../../types';
 import Icon from '../ui/Icon';
 
 type SortableKeys = keyof Pick<Project, 'name' | 'client' | 'lastModified'>;
+const ALL_STATUSES: (Project['status'] | 'All')[] = ['All', 'Draft', 'In Review', 'Completed'];
 
 const getStatusClasses = (status: Project['status']) => {
     switch (status) {
@@ -21,13 +22,16 @@ interface ProjectsViewProps {
 
 const ProjectsView: React.FC<ProjectsViewProps> = ({ projects, onSelectProject }) => {
     const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState<Project['status'] | 'All'>('All');
     const [sortConfig, setSortConfig] = useState<{ key: SortableKeys; direction: 'ascending' | 'descending' }>({ key: 'lastModified', direction: 'descending' });
 
     const sortedAndFilteredProjects = useMemo(() => {
-        let filtered = projects.filter(p => 
-            p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-            p.client.toLowerCase().includes(searchTerm.toLowerCase())
-        );
+        let filtered = projects.filter(p => {
+            const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                p.client.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesStatus = statusFilter === 'All' || p.status === statusFilter;
+            return matchesSearch && matchesStatus;
+        });
 
         filtered.sort((a, b) => {
             if (a[sortConfig.key] < b[sortConfig.key]) {
@@ -40,7 +44,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({ projects, onSelectProject }
         });
         
         return filtered;
-    }, [projects, searchTerm, sortConfig]);
+    }, [projects, searchTerm, statusFilter, sortConfig]);
     
     const requestSort = (key: SortableKeys) => {
         let direction: 'ascending' | 'descending' = 'ascending';
@@ -53,10 +57,10 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({ projects, onSelectProject }
     return (
         <div className="bg-white rounded-xl shadow-sm p-6 h-full flex flex-col space-y-6">
             {/* Toolbar */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className="relative w-full max-w-sm">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Icon name="chat" className="w-5 h-5 text-gray-400" />
+                        <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd"></path></svg>
                     </div>
                     <input
                         type="text"
@@ -66,16 +70,16 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({ projects, onSelectProject }
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#29B6F6] focus:border-[#29B6F6] transition"
                     />
                 </div>
-                <div>
-                    <select 
-                        onChange={(e) => requestSort(e.target.value as SortableKeys)}
-                        defaultValue="lastModified"
-                        className="border border-gray-300 rounded-lg py-2 px-3 focus:ring-2 focus:ring-[#29B6F6] focus:border-[#29B6F6] transition"
-                    >
-                        <option value="lastModified">Sort by Last Modified</option>
-                        <option value="name">Sort by Project Name</option>
-                        <option value="client">Sort by Client Name</option>
-                    </select>
+                <div className="flex items-center space-x-2 bg-gray-100 p-1 rounded-lg">
+                   {ALL_STATUSES.map(status => (
+                       <button 
+                         key={status}
+                         onClick={() => setStatusFilter(status)}
+                         className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${statusFilter === status ? 'bg-white text-[#0D47A1] shadow-sm' : 'text-gray-600 hover:bg-gray-200'}`}
+                       >
+                           {status}
+                       </button>
+                   ))}
                 </div>
             </div>
 
@@ -86,7 +90,12 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({ projects, onSelectProject }
                         <tr>
                             <th className="p-3 text-sm font-semibold text-[#616161] tracking-wider">Project Name</th>
                             <th className="p-3 text-sm font-semibold text-[#616161] tracking-wider">Client</th>
-                            <th className="p-3 text-sm font-semibold text-[#616161] tracking-wider">Last Modified</th>
+                            <th className="p-3 text-sm font-semibold text-[#616161] tracking-wider">
+                               <button onClick={() => requestSort('lastModified')} className="flex items-center space-x-1">
+                                   <span>Last Modified</span>
+                                   {sortConfig.key === 'lastModified' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                               </button>
+                            </th>
                             <th className="p-3 text-sm font-semibold text-[#616161] tracking-wider">Status</th>
                             <th className="p-3 text-sm font-semibold text-[#616161] tracking-wider text-right">Actions</th>
                         </tr>
