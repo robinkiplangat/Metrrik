@@ -2,6 +2,7 @@
 import React from 'react';
 import type { Project } from '../../types';
 import Icon from '../ui/Icon';
+import { UserButton } from '@clerk/clerk-react';
 
 type View = 'dashboard' | 'projects' | 'settings';
 
@@ -50,6 +51,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, project, onBack, onNewProj
             <span>New Project</span>
           </button>
         )}
+        <UserButton afterSignOutUrl="/" />
       </div>
     </header>
   );

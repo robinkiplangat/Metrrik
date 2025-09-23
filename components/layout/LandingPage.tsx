@@ -1,5 +1,5 @@
 import React from 'react';
-import Logo from '../ui/Logo';
+import { SignInButton } from '@clerk/clerk-react';
 
 interface LandingPageProps {
   onLogin: () => void;
@@ -7,56 +7,96 @@ interface LandingPageProps {
 
 const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-white font-inter">
-      {/* Left side content */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-between p-8 sm:p-12 lg:p-16">
-        <Logo showText={true} />
-        
-        <div className="my-16 lg:my-0">
-          <h1 className="text-4xl sm:text-5xl font-bold text-[#424242] font-poppins leading-tight">
-            Your Co-Pilot for Construction Intelligence.
-          </h1>
-          <p className="mt-4 text-lg text-[#616161]">
-            Streamline quantity surveying with AI-powered precision, efficiency, and expert insight.
-          </p>
-          <div className="mt-8 flex items-center space-x-6">
-            <button 
-              onClick={onLogin}
-              className="bg-[#29B6F6] text-white font-semibold py-3 px-8 rounded-lg hover:bg-[#039BE5] transition-colors duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#29B6F6]">
-              Discover Q-Sci
-            </button>
-             <a href="#" className="font-semibold text-[#29B6F6] hover:underline">
-                Learn More
-            </a>
-          </div>
-        </div>
-        
-        <p className="text-sm text-gray-400">&copy; {new Date().getFullYear()} Q-Sci. All rights reserved.</p>
-      </div>
-      
-      {/* Right side image */}
+    <div className="min-h-screen flex flex-col lg:flex-row font-inter">
+      {/* Left side - Blueprint themed section (2/3 width) */}
       <div 
-        className="w-full lg:w-1/2 bg-[#0D47A1] bg-cover bg-center min-h-[50vh] lg:min-h-screen flex items-center justify-center p-8"
-        // This is a placeholder for the hero image.
-        // I am using a CSS-generated blueprint grid to mimic the style from the mockup.
-        // You can replace this with `backgroundImage: 'url(path/to/image.jpg)'`
+        className="w-full lg:w-2/3 flex flex-col justify-between p-8 sm:p-12 lg:p-16 min-h-screen"
         style={{
-            backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.05) 2px, transparent 2px), linear-gradient(90deg, rgba(255, 255, 255, 0.05) 2px, transparent 2px), linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px)',
-            backgroundSize: '100px 100px, 100px 100px, 20px 20px, 20px 20px',
-            backgroundPosition: '-2px -2px, -2px -2px, -1px -1px, -1px -1px',
+          backgroundImage: 'url(/docs/imgs/Landing_Page_BG.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
         }}
       >
-        <div className="text-center">
-            {/* The mockup shows an architectural drawing here. This SVG is a placeholder. */}
-            <svg className="w-64 h-64 sm:w-80 sm:h-80 lg:w-96 lg:h-96 text-white/50" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                <path d="M 30 170 L 30 70 L 100 20 L 170 70 L 170 170 L 30 170 Z" stroke="currentColor" strokeWidth="1.5" fill="none" />
-                <path d="M 30 70 L 80 70 L 80 170" stroke="currentColor" strokeWidth="1" strokeDasharray="4" fill="none" />
-                <path d="M 120 170 L 120 70 L 170 70" stroke="currentColor" strokeWidth="1" strokeDasharray="4" fill="none" />
-                <rect x="50" y="120" width="30" height="50" stroke="currentColor" strokeWidth="1.5" fill="none" />
-                <rect x="120" y="90" width="30" height="40" stroke="currentColor" strokeWidth="1.5" fill="none" />
-                <circle cx="100" cy="110" r="15" stroke="currentColor" strokeWidth="1" fill="none" />
-                <path d="M 100 95 L 100 125 M 85 110 L 115 110" stroke="currentColor" strokeWidth="1" fill="none" />
+        {/* Header content positioned in upper left */}
+        <div className="flex flex-col items-start">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
+            CONSTRUCTION INTELLIGENCE.
+          </h1>
+          <p className="text-lg sm:text-xl text-white leading-relaxed max-w-2xl">
+            Smart tools for smart builders.
+          </p>
+        </div>
+
+        {/* Architectural illustration area - positioned in center/lower */}
+        <div className="flex-1 flex items-center justify-center mt-8">
+          {/* This area would contain the architectural drawing from the design */}
+          {/* For now, we'll use a placeholder that matches the blueprint theme */}
+          <div className="text-white/80">
+            <svg className="w-80 h-80 lg:w-96 lg:h-96" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+              {/* Modern building outline */}
+              <path d="M 50 350 L 50 150 L 120 100 L 280 100 L 350 150 L 350 350 L 50 350 Z" stroke="white" strokeWidth="2" fill="none" />
+              
+              {/* Building sections */}
+              <path d="M 50 150 L 120 150 L 120 350" stroke="white" strokeWidth="1.5" strokeDasharray="4" fill="none" />
+              <path d="M 280 350 L 280 150 L 350 150" stroke="white" strokeWidth="1.5" strokeDasharray="4" fill="none" />
+              
+              {/* Windows and details */}
+              <rect x="70" y="180" width="30" height="40" stroke="white" strokeWidth="1" fill="none" />
+              <rect x="110" y="180" width="30" height="40" stroke="white" strokeWidth="1" fill="none" />
+              <rect x="200" y="140" width="30" height="40" stroke="white" strokeWidth="1" fill="none" />
+              <rect x="250" y="140" width="30" height="40" stroke="white" strokeWidth="1" fill="none" />
+              <rect x="300" y="140" width="30" height="40" stroke="white" strokeWidth="1" fill="none" />
+              
+              {/* Pool area */}
+              <rect x="150" y="280" width="80" height="40" stroke="white" strokeWidth="1.5" fill="none" />
+              <rect x="160" y="290" width="60" height="20" stroke="white" strokeWidth="1" fill="rgba(255,255,255,0.1)" />
+              
+              {/* Data flow elements */}
+              <circle cx="80" cy="120" r="3" fill="#29B6F6" />
+              <circle cx="120" cy="110" r="3" fill="#29B6F6" />
+              <circle cx="160" cy="115" r="3" fill="#FFC107" />
+              <path d="M 80 120 Q 100 110 120 110" stroke="#29B6F6" strokeWidth="1.5" fill="none" />
+              <path d="M 120 110 Q 140 112 160 115" stroke="#29B6F6" strokeWidth="1.5" fill="none" />
             </svg>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <p className="text-sm text-white/60 mt-8">&copy; {new Date().getFullYear()} Q-Sci. All rights reserved.</p>
+      </div>
+      
+      {/* Right side - Light gray section (1/3 width) */}
+      <div className="w-full lg:w-1/3 bg-gray-100 flex flex-col items-center justify-center p-8 lg:p-12 min-h-screen">
+        {/* Logo section */}
+        <div className="flex flex-col items-center mb-16">
+          <div className="flex items-center mb-4">
+            <img 
+              src="/docs/imgs/Q-Sci_Logo_clear.png" 
+              alt="Q-Sci Logo" 
+              className="h-48 w-auto"
+            />
+          </div>
+          {/* <p className="text-sm text-gray-500 tracking-wider uppercase font-medium">
+            SMART CONSTRUCTION SOLUTIONS
+          </p> */}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col space-y-4 w-full max-w-xs">
+          <SignInButton mode="modal">
+            <button 
+              className="bg-[#29B6F6] hover:bg-[#039BE5] text-white font-semibold py-4 px-8 rounded-lg transition-colors duration-200 shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#29B6F6] w-full"
+            >
+              Get Started
+            </button>
+          </SignInButton>
+          
+          <button 
+            className="bg-transparent border-2 border-[#29B6F6] text-[#29B6F6] hover:bg-[#29B6F6] hover:text-white font-semibold py-4 px-8 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#29B6F6] w-full"
+          >
+            More About Us
+          </button>
         </div>
       </div>
     </div>
