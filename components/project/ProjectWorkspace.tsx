@@ -10,7 +10,7 @@ interface ProjectWorkspaceProps {
   project: Project;
 }
 
-type ActiveTab = 'chat' | 'documents' | 'files' | 'summary';
+type ActiveTab = 'documents' | 'files' | 'summary';
 
 const TabButton: React.FC<{label: string; iconName: 'chat' | 'document' | 'file' | 'dashboard'; isActive: boolean; onClick: () => void;}> = ({label, iconName, isActive, onClick}) => {
     const activeClasses = 'text-[#0D47A1] border-b-2 border-[#FFC107]';
@@ -26,7 +26,7 @@ const TabButton: React.FC<{label: string; iconName: 'chat' | 'document' | 'file'
 }
 
 const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ project }) => {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('chat');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('documents');
   
   // Lifted state for shared data between views
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -40,14 +40,12 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ project }) => {
     <div className="h-full flex flex-col">
       <div className="flex-shrink-0 mb-6 border-b border-gray-200">
         <div className="flex items-center">
-            <TabButton label="AI Chat" iconName="chat" isActive={activeTab === 'chat'} onClick={() => setActiveTab('chat')} />
             <TabButton label="Documents" iconName="document" isActive={activeTab === 'documents'} onClick={() => setActiveTab('documents')} />
-            <TabButton label="Files" iconName="file" isActive={activeTab === 'files'} onClick={() => setActiveTab('files')} />
+            <TabButton label="Plans to BQ" iconName="file" isActive={activeTab === 'files'} onClick={() => setActiveTab('files')} />
             <TabButton label="Summary" iconName="dashboard" isActive={activeTab === 'summary'} onClick={() => setActiveTab('summary')} />
         </div>
       </div>
       <div className="flex-1 overflow-hidden">
-        {activeTab === 'chat' && <ChatView project={project} messages={messages} setMessages={setMessages} setDocuments={setDocuments} />}
         {activeTab === 'documents' && <DocumentsView project={project} documents={documents} setDocuments={setDocuments} />}
         {activeTab === 'files' && <FilesView files={files} setFiles={setFiles} setDocuments={setDocuments} />}
         {activeTab === 'summary' && <SummaryReportView project={project} messages={messages} documents={documents} files={files} />}

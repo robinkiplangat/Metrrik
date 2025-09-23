@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import type { Project } from './types';
+import type { Project, ChatMessage } from './types';
 import Sidebar from './components/layout/Sidebar';
 import Dashboard from './components/dashboard/Dashboard';
 import ProjectWorkspace from './components/project/ProjectWorkspace';
@@ -8,6 +8,7 @@ import Header from './components/layout/Header';
 import ProjectsView from './components/projects/ProjectsView';
 import SettingsView from './components/settings/SettingsView';
 import LandingPage from './components/layout/LandingPage';
+import ChatBubble from './components/ui/ChatBubble';
 import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from '@clerk/clerk-react';
 
 // Mock data for initial projects
@@ -25,6 +26,11 @@ const App: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  
+  // Global chat state for the copilot
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    { id: '1', sender: 'ai', text: `Hello! I'm Q-Sci, your AI construction copilot. I can help you with cost estimates, project planning, quantity surveying, and more. How can I assist you today?` }
+  ]);
 
   const handleLogin = () => {
     // This will be handled by Clerk's SignInButton
@@ -96,6 +102,13 @@ const App: React.FC = () => {
             </div>
           </main>
         </div>
+        
+        {/* Floating AI Copilot */}
+        <ChatBubble 
+          project={selectedProject || undefined}
+          messages={chatMessages}
+          setMessages={setChatMessages}
+        />
       </SignedIn>
     </>
   );

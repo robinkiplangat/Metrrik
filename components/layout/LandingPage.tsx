@@ -12,7 +12,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       <div 
         className="w-full lg:w-2/3 flex flex-col justify-between p-8 sm:p-12 lg:p-16 min-h-screen"
         style={{
-          backgroundImage: 'url(/docs/imgs/Landing_Page_BG.png)',
+          backgroundImage: 'url(/assets/Landing_Page_BG.png)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat'
@@ -72,7 +72,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         <div className="flex flex-col items-center mb-16">
           <div className="flex items-center mb-4">
             <img 
-              src="/docs/imgs/Q-Sci_Logo_clear.png" 
+              src="/assets/Q-Sci_Logo_clear.png" 
               alt="Q-Sci Logo" 
               className="h-48 w-auto"
             />
