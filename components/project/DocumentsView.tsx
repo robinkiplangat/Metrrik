@@ -4,11 +4,133 @@ import { generateDocumentContent } from '../../services/geminiService';
 import Icon from '../ui/Icon';
 import ConfirmationDialog from '../ui/ConfirmationDialog';
 import NewDocumentModal from './NewDocumentModal';
+import EnhancedDocumentPreview from '../ui/EnhancedDocumentPreview';
 
 const initialDocuments: Document[] = [
-    { id: 'doc-1', name: 'Preliminary Cost Estimate', type: 'Estimate', createdAt: '2024-07-22T11:30:00Z', content: 'Initial costings for the Runda project, covering foundation and structural work.', versions: [{version: 1, createdAt: '2024-07-22T11:30:00Z', content: 'Initial costings...' }] },
-    { id: 'doc-2', name: 'Client Proposal V1', type: 'Proposal', createdAt: '2024-07-22T15:00:00Z', content: 'This document outlines the scope of work, timeline, and payment schedule for the Kilimani Maisonette project.', versions: [{version: 1, createdAt: '2024-07-22T15:00:00Z', content: 'Proposal details...' }] },
-    { id: 'doc-3', name: 'Floor Plan BQ Draft', type: 'BQ Draft', createdAt: '2024-07-23T09:00:00Z', content: 'A draft Bill of Quantities derived from the initial floor plan analysis.', versions: [{version: 1, createdAt: '2024-07-23T09:00:00Z', content: 'BQ draft from plan...' }] },
+    { 
+        id: 'doc-1', 
+        name: 'Preliminary Cost Estimate', 
+        type: 'Estimate', 
+        createdAt: '2024-07-22T11:30:00Z', 
+        content: `# Preliminary Cost Estimate
+
+## Project Summary
+- **Project Name:** Runda Residential Development
+- **Client:** Mr. & Mrs. Omondi
+- **Location:** Runda, Nairobi
+- **Estimate Date:** July 22, 2024
+
+## Cost Breakdown
+
+### Substructure
+| Item | Description | Unit | Quantity | Rate (KES) | Total (KES) |
+|------|-------------|------|----------|------------|-------------|
+| 1.1 | Excavation for foundations | m³ | 45.5 | 2,500 | 113,750 |
+| 1.2 | Foundation concrete (1:2:4) | m³ | 12.8 | 8,500 | 108,800 |
+| 1.3 | Reinforcement steel | kg | 1,200 | 180 | 216,000 |
+
+**Substructure Subtotal:** KES 438,550
+
+### Superstructure
+| Item | Description | Unit | Quantity | Rate (KES) | Total (KES) |
+|------|-------------|------|----------|------------|-------------|
+| 2.1 | Blockwork (6 inch) | m² | 180 | 1,200 | 216,000 |
+| 2.2 | Roofing (GCI sheets) | m² | 120 | 2,800 | 336,000 |
+| 2.3 | Windows (Aluminum) | No. | 8 | 25,000 | 200,000 |
+
+**Superstructure Subtotal:** KES 752,000
+
+## Summary
+- **Total Estimated Cost:** KES 1,190,550
+- **Contingency (10%):** KES 119,055
+- **Grand Total:** KES 1,309,605
+
+> **Note:** This is a preliminary estimate based on current market rates. Final costs may vary based on actual site conditions and material availability.
+
+## Next Steps
+1. Client review and approval
+2. Detailed design development
+3. Final cost estimation
+4. Construction planning`, 
+        versions: [{version: 1, createdAt: '2024-07-22T11:30:00Z', content: 'Initial costings...' }] 
+    },
+    { 
+        id: 'doc-2', 
+        name: 'Client Proposal V1', 
+        type: 'Proposal', 
+        createdAt: '2024-07-22T15:00:00Z', 
+        content: `# Client Proposal
+
+## Project Overview
+This document outlines the scope of work, timeline, and payment schedule for the **Kilimani Maisonette** project.
+
+### Scope of Work
+- Architectural design and planning
+- Structural engineering
+- Quantity surveying and cost estimation
+- Project management and supervision
+
+### Timeline
+- **Phase 1:** Design and Planning (4 weeks)
+- **Phase 2:** Documentation (2 weeks)  
+- **Phase 3:** Construction (16 weeks)
+
+### Payment Schedule
+- 30% upon contract signing
+- 40% at project midpoint
+- 30% upon completion
+
+---
+
+*For any questions, please contact our team.*`, 
+        versions: [{version: 1, createdAt: '2024-07-22T15:00:00Z', content: 'Proposal details...' }] 
+    },
+    { 
+        id: 'doc-3', 
+        name: 'Floor Plan BQ Draft', 
+        type: 'BQ Draft', 
+        createdAt: '2024-07-23T09:00:00Z', 
+        content: `# Bill of Quantities - Floor Plan Analysis
+
+## AI-Generated Analysis
+
+### Summary
+- **Total Estimated Cost:** KES 2,450,000
+- **AI Confidence Score:** 85%
+- **Analysis Date:** July 23, 2024
+
+### Key Findings
+
+#### Structural Elements
+- **Foundation:** Strip foundation with reinforced concrete
+- **Walls:** 6-inch blockwork with plaster finish
+- **Roof:** GCI roofing with timber trusses
+
+#### Cost Breakdown
+| Category | Amount (KES) | Percentage |
+|----------|--------------|------------|
+| Substructure | 650,000 | 26.5% |
+| Superstructure | 1,200,000 | 49.0% |
+| Finishes | 400,000 | 16.3% |
+| Services | 200,000 | 8.2% |
+
+### Recommendations
+1. **Material Optimization:** Consider alternative roofing materials
+2. **Cost Savings:** Bulk purchasing for major materials
+3. **Timeline:** Allow 20% buffer for weather delays
+
+\`\`\`javascript
+// Sample calculation function
+function calculateTotalCost(items) {
+  return items.reduce((total, item) => {
+    return total + (item.quantity * item.rate);
+  }, 0);
+}
+\`\`\`
+
+> **Disclaimer:** This analysis is based on AI interpretation of the provided floor plan. Manual verification is recommended.`, 
+        versions: [{version: 1, createdAt: '2024-07-23T09:00:00Z', content: 'BQ draft from plan...' }] 
+    },
 ];
 
 const documentTemplates: Template[] = [
@@ -57,72 +179,6 @@ const HistoryModal: React.FC<HistoryModalProps> = ({ doc, onClose, onRevert }) =
 );
 
 
-interface PreviewModalProps {
-    doc: Document;
-    onClose: () => void;
-    onSave: (docId: string, newContent: string, newType: Document['type']) => void;
-}
-
-const PreviewModal: React.FC<PreviewModalProps> = ({ doc, onClose, onSave }) => {
-    const [isEditing, setIsEditing] = useState(false);
-    const [editedContent, setEditedContent] = useState(doc.content);
-    const [editedType, setEditedType] = useState(doc.type);
-
-    const handleSave = () => {
-        onSave(doc.id, editedContent, editedType);
-        setIsEditing(false);
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-40 p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col">
-                <div className="p-4 border-b flex justify-between items-center flex-shrink-0">
-                    <h3 className="text-xl font-semibold text-[#424242]">{doc.name}</h3>
-                    <div className="flex items-center space-x-3">
-                        {!isEditing && (
-                            <button onClick={() => setIsEditing(true)} className="flex items-center space-x-2 text-gray-600 hover:text-blue-600">
-                                <Icon name="settings" className="w-5 h-5" />
-                                <span>Edit</span>
-                            </button>
-                        )}
-                        <button onClick={onClose} className="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
-                    </div>
-                </div>
-                <div className="p-6 overflow-y-auto flex-grow">
-                    {isEditing ? (
-                        <div className="flex flex-col h-full space-y-4">
-                            <div>
-                                <label className="font-medium text-sm text-gray-600">Document Type</label>
-                                <select value={editedType} onChange={(e) => setEditedType(e.target.value as Document['type'])} className="w-full mt-1 p-2 border border-gray-300 rounded-md">
-                                    {ALL_DOC_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
-                                </select>
-                            </div>
-                            <textarea
-                                value={editedContent}
-                                onChange={(e) => setEditedContent(e.target.value)}
-                                className="w-full h-full p-3 border border-gray-300 rounded-md flex-grow resize-none"
-                            />
-                        </div>
-                    ) : (
-                        <div className="prose max-w-none">
-                            <pre className="whitespace-pre-wrap font-sans">{doc.content}</pre>
-                        </div>
-                    )}
-                </div>
-                <div className="p-4 bg-gray-50 border-t rounded-b-xl flex justify-end space-x-3 flex-shrink-0">
-                     {isEditing ? (
-                        <>
-                            <button onClick={() => setIsEditing(false)} className="px-4 py-2 bg-gray-200 text-[#424242] rounded-lg hover:bg-gray-300">Cancel</button>
-                            <button onClick={handleSave} className="px-4 py-2 bg-[#0D47A1] text-white rounded-lg hover:bg-blue-800">Save Changes</button>
-                        </>
-                    ) : (
-                        <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-[#424242] rounded-lg hover:bg-gray-300">Close</button>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-};
 
 
 const getTypeColorClasses = (type: Document['type']) => {
@@ -400,7 +456,7 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
                 </div>
             </div>
             {historyDoc && <HistoryModal doc={historyDoc} onClose={() => setHistoryDoc(null)} onRevert={handleRevert} />}
-            {previewDoc && <PreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} onSave={handleSaveFromPreview} />}
+            {previewDoc && <EnhancedDocumentPreview doc={previewDoc} onClose={() => setPreviewDoc(null)} onSave={handleSaveFromPreview} />}
             
             {/* Confirmation Dialog */}
             <ConfirmationDialog
