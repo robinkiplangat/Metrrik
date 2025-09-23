@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import Icon from '../ui/Icon';
+import { UserProfile } from '@clerk/clerk-react';
 
 type SettingTab = 'profile' | 'company' | 'preferences' | 'billing';
 
@@ -13,10 +14,23 @@ const SettingsView: React.FC = () => {
                 return (
                     <div>
                         <h2 className="text-xl font-bold text-[#424242]">Profile Settings</h2>
-                        <p className="text-gray-600 mt-1">Manage your personal information.</p>
-                        <div className="mt-6 p-8 border rounded-lg bg-gray-50 text-center">
-                            <p className="text-gray-700">Clerk User Profile Management Component would be rendered here.</p>
-                            <button className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md">Manage Profile</button>
+                        <p className="text-gray-600 mt-1">Manage your personal information and account settings.</p>
+                        <div className="mt-6">
+                            <UserProfile 
+                                appearance={{
+                                    elements: {
+                                        rootBox: "w-full",
+                                        card: "shadow-none border border-gray-200 rounded-lg",
+                                        navbar: "border-b border-gray-200",
+                                        navbarButton: "text-gray-600 hover:text-gray-900",
+                                        navbarButtonActive: "text-[#0D47A1] border-b-2 border-[#0D47A1]",
+                                        formButtonPrimary: "bg-[#29B6F6] hover:bg-[#039BE5]",
+                                        formFieldInput: "border-gray-300 focus:border-[#29B6F6] focus:ring-[#29B6F6]",
+                                        identityPreviewText: "text-gray-600",
+                                        identityPreviewEditButton: "text-[#29B6F6] hover:text-[#039BE5]"
+                                    }
+                                }}
+                            />
                         </div>
                     </div>
                 );

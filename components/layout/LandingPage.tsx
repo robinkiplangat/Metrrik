@@ -1,4 +1,5 @@
 import React from 'react';
+import { SignInButton } from '@clerk/clerk-react';
 
 interface LandingPageProps {
   onLogin: () => void;
@@ -77,17 +78,26 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             />
           </div>
           <p className="text-sm text-gray-500 tracking-wider uppercase font-medium">
-            AI-POWERED QUANTITY SURVEYING
+            SMART CONSTRUCTION SOLUTIONS
           </p>
         </div>
 
-        {/* Call to Action Button */}
-        <button 
-          onClick={onLogin}
-          className="bg-teal-500 hover:bg-teal-600 text-white font-semibold py-4 px-12 rounded-lg transition-colors duration-200 shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
-        >
-          Discover Q-Sci
-        </button>
+        {/* Action Buttons */}
+        <div className="flex flex-col space-y-4 w-full max-w-xs">
+          <SignInButton mode="modal">
+            <button 
+              className="bg-[#29B6F6] hover:bg-[#039BE5] text-white font-semibold py-4 px-8 rounded-lg transition-colors duration-200 shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#29B6F6] w-full"
+            >
+              Get Started
+            </button>
+          </SignInButton>
+          
+          <button 
+            className="bg-transparent border-2 border-[#29B6F6] text-[#29B6F6] hover:bg-[#29B6F6] hover:text-white font-semibold py-4 px-8 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#29B6F6] w-full"
+          >
+            More About Us
+          </button>
+        </div>
       </div>
     </div>
   );

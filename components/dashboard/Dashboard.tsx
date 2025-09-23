@@ -3,19 +3,22 @@ import React from 'react';
 import type { Project } from '../../types';
 import ProjectCard from './ProjectCard';
 import Icon from '../ui/Icon';
+import { useUser } from '@clerk/clerk-react';
 
 interface DashboardProps {
   projects: Project[];
   onSelectProject: (project: Project) => void;
   onNewProject: () => void;
-  user: { name: string };
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ projects, onSelectProject, onNewProject, user }) => {
+const Dashboard: React.FC<DashboardProps> = ({ projects, onSelectProject, onNewProject }) => {
+  const { user } = useUser();
+  const firstName = user?.firstName || user?.fullName?.split(' ')[0] || 'User';
+
   return (
     <div className="space-y-12">
       <div>
-        <h1 className="text-5xl font-bold text-[#424242]">Welcome back, {user.name.split(' ')[0]}!</h1>
+        <h1 className="text-5xl font-bold text-[#424242]">Welcome back, {firstName}!</h1>
         <p className="text-[#616161] mt-2 text-base">Here's a look at your recent activity. Let's get started.</p>
       </div>
 

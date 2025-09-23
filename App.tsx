@@ -8,6 +8,7 @@ import Header from './components/layout/Header';
 import ProjectsView from './components/projects/ProjectsView';
 import SettingsView from './components/settings/SettingsView';
 import LandingPage from './components/layout/LandingPage';
+import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from '@clerk/clerk-react';
 
 // Mock data for initial projects
 const initialProjects: Project[] = [
@@ -21,14 +22,13 @@ const initialProjects: Project[] = [
 type View = 'dashboard' | 'projects' | 'settings';
 
 const App: React.FC = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const user = { name: 'Purity W.', company: 'PW Surveyors' };
 
-  const handleLogin = () => setIsLoggedIn(true);
-  const handleLogout = () => setIsLoggedIn(false);
+  const handleLogin = () => {
+    // This will be handled by Clerk's SignInButton
+  };
 
   const handleSelectProject = (project: Project) => {
     setSelectedProject(project);
@@ -62,39 +62,42 @@ const App: React.FC = () => {
     }
     switch(currentView) {
       case 'dashboard':
-        return <Dashboard projects={projects.slice(0, 4)} onSelectProject={handleSelectProject} onNewProject={handleCreateNewProject} user={user} />;
+        return <Dashboard projects={projects.slice(0, 4)} onSelectProject={handleSelectProject} onNewProject={handleCreateNewProject} />;
       case 'projects':
         return <ProjectsView projects={projects} onSelectProject={handleSelectProject} />;
       case 'settings':
         return <SettingsView />;
       default:
-        return <Dashboard projects={projects.slice(0, 4)} onSelectProject={handleSelectProject} onNewProject={handleCreateNewProject} user={user} />;
+        return <Dashboard projects={projects.slice(0, 4)} onSelectProject={handleSelectProject} onNewProject={handleCreateNewProject} />;
     }
   };
 
-  if (!isLoggedIn) {
-    return <LandingPage onLogin={handleLogin} />;
-  }
-
   return (
-    <div className="flex h-screen bg-[#F5F5F5] text-[#616161]">
-      <Sidebar 
-        currentView={selectedProject ? 'projects' : currentView} 
-        onSetView={handleSetView}
-        onLogout={handleLogout}
-      />
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <Header 
-          currentView={currentView}
-          project={selectedProject} 
-          onBack={selectedProject ? handleBackToProjects : undefined} 
-          onNewProject={handleCreateNewProject} 
-        />
-        <div className="flex-1 overflow-y-auto p-6 lg:p-8">
-          {renderContent()}
+    <>
+      <SignedOut>
+        <LandingPage onLogin={handleLogin} />
+      </SignedOut>
+      <SignedIn>
+        <div className="flex h-screen bg-[#F5F5F5] text-[#616161]">
+          <Sidebar 
+            currentView={selectedProject ? 'projects' : currentView} 
+            onSetView={handleSetView}
+            onLogout={() => {}} // Clerk handles logout through UserButton
+          />
+          <main className="flex-1 flex flex-col overflow-hidden">
+            <Header 
+              currentView={currentView}
+              project={selectedProject} 
+              onBack={selectedProject ? handleBackToProjects : undefined} 
+              onNewProject={handleCreateNewProject} 
+            />
+            <div className="flex-1 overflow-y-auto p-6 lg:p-8">
+              {renderContent()}
+            </div>
+          </main>
         </div>
-      </main>
-    </div>
+      </SignedIn>
+    </>
   );
 };
 
