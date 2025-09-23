@@ -9,7 +9,7 @@ const Logo: React.FC<LogoProps> = ({ className, showText = true }) => {
   return (
     <div className={`flex items-center space-x-3 ${className}`}>
       <img 
-        src="/docs/imgs/Q-Sci_Logo_text_dark.png" 
+        src="/assets/Q-Sci_Logo_text_dark.png" 
         alt="Q-Sci Logo" 
         className="h-12 w-auto flex-shrink-0"
       />

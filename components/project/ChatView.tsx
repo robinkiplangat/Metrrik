@@ -85,6 +85,7 @@ interface ChatViewProps {
     messages: ChatMessage[];
     setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
     setDocuments: React.Dispatch<React.SetStateAction<Document[]>>;
+    isCompact?: boolean;
 }
 
 const ALL_DOC_TYPES: Document['type'][] = ['Estimate', 'Proposal', 'BQ Draft', 'Documentation', 'Request'];
@@ -147,7 +148,7 @@ const ExportChatModal: React.FC<ExportChatModalProps> = ({ onClose, onSave }) =>
     );
 };
 
-const ChatView: React.FC<ChatViewProps> = ({ project, messages, setMessages, setDocuments }) => {
+const ChatView: React.FC<ChatViewProps> = ({ project, messages, setMessages, setDocuments, isCompact = false }) => {
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -222,37 +223,39 @@ const ChatView: React.FC<ChatViewProps> = ({ project, messages, setMessages, set
     };
 
     return (
-        <div className="h-full flex flex-col bg-white rounded-xl shadow-sm">
-            <div className="flex-1 p-6 overflow-y-auto">
+        <div className={`h-full flex flex-col ${isCompact ? 'bg-transparent' : 'bg-white rounded-xl shadow-sm'}`}>
+            <div className={`flex-1 ${isCompact ? 'p-2' : 'p-6'} overflow-y-auto`}>
                 <div className="space-y-4">
                     {messages.map((msg) => <ChatBubble key={msg.id} message={msg} />)}
                     <div ref={messagesEndRef} />
                 </div>
             </div>
-            <div className="p-4 border-t border-gray-200">
+            <div className={`${isCompact ? 'p-2' : 'p-4'} border-t border-gray-200`}>
                 <div className="relative">
                     <textarea
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                        placeholder="Ask for a preliminary cost estimate for a 4-bedroom maisonette in Kilimani..."
-                        className="w-full p-4 pr-28 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#29B6F6] focus:border-[#29B6F6] transition resize-none"
-                        rows={2}
+                        placeholder={isCompact ? "Ask Q-Sci anything..." : "Ask for a preliminary cost estimate for a 4-bedroom maisonette in Kilimani..."}
+                        className={`w-full ${isCompact ? 'p-2 pr-20' : 'p-4 pr-28'} border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#29B6F6] focus:border-[#29B6F6] transition resize-none`}
+                        rows={isCompact ? 1 : 2}
                         disabled={isLoading}
                     />
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center space-x-2">
-                         <button
-                            onClick={() => setIsExportModalOpen(true)}
-                            disabled={isLoading}
-                            title="Export chat to document"
-                            className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-600 disabled:bg-gray-100 disabled:text-gray-400 transition-colors">
-                            <Icon name="document" className="w-6 h-6" />
-                        </button>
+                    <div className={`absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1`}>
+                         {!isCompact && (
+                            <button
+                                onClick={() => setIsExportModalOpen(true)}
+                                disabled={isLoading}
+                                title="Export chat to document"
+                                className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-600 disabled:bg-gray-100 disabled:text-gray-400 transition-colors">
+                                <Icon name="document" className="w-4 h-4" />
+                            </button>
+                        )}
                         <button
                             onClick={handleSend}
                             disabled={isLoading || !input.trim()}
-                            className="p-2 rounded-full bg-[#29B6F6] hover:bg-[#039BE5] text-white disabled:bg-gray-300 transition-colors">
-                            <Icon name="send" className="w-6 h-6" />
+                            className={`p-2 rounded-full bg-[#29B6F6] hover:bg-[#039BE5] text-white disabled:bg-gray-300 transition-colors`}>
+                            <Icon name="send" className={`${isCompact ? 'w-4 h-4' : 'w-6 h-6'}`} />
                         </button>
                     </div>
                 </div>
