@@ -88,3 +88,119 @@ export interface AnalyzedBQ {
   intelligentSuggestions: AISuggestion[];
   error?: string; // To handle analysis errors gracefully
 }
+
+// Database-related types
+export interface User {
+  _id?: string;
+  clerkUserId: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  createdAt: string;
+  lastLoginAt?: string;
+  preferences?: {
+    theme?: 'light' | 'dark';
+    notifications?: boolean;
+    defaultProjectType?: string;
+  };
+}
+
+export interface Session {
+  _id?: string;
+  userId: string;
+  sessionToken: string;
+  createdAt: string;
+  expiresAt: string;
+  lastAccessedAt: string;
+  isActive: boolean;
+  userAgent?: string;
+  ipAddress?: string;
+}
+
+export interface ProjectDocument {
+  _id?: string;
+  userId: string;
+  name: string;
+  client: string;
+  description?: string;
+  status: 'Draft' | 'In Review' | 'Completed';
+  createdAt: string;
+  lastModified: string;
+  tags?: string[];
+  metadata?: {
+    location?: string;
+    projectType?: string;
+    estimatedValue?: number;
+    currency?: string;
+  };
+}
+
+export interface DocumentDocument {
+  _id?: string;
+  userId: string;
+  projectId?: string;
+  name: string;
+  type: 'Estimate' | 'Proposal' | 'BQ Draft' | 'Template' | 'Documentation' | 'Request';
+  content: string;
+  createdAt: string;
+  lastModified: string;
+  versions: Array<{
+    version: number;
+    createdAt: string;
+    content: string;
+    modifiedBy?: string;
+  }>;
+  tags?: string[];
+  isTemplate?: boolean;
+  templateId?: string;
+}
+
+export interface ChatMessageDocument {
+  _id?: string;
+  userId: string;
+  projectId?: string;
+  sessionId: string;
+  sender: 'user' | 'ai';
+  text: string;
+  timestamp: string;
+  metadata?: {
+    messageType?: string;
+    attachments?: string[];
+    context?: any;
+  };
+}
+
+export interface UploadedFileDocument {
+  _id?: string;
+  userId: string;
+  projectId?: string;
+  name: string;
+  originalName: string;
+  size: number;
+  mimeType: string;
+  uploadedAt: string;
+  base64: string;
+  status: 'uploading' | 'completed' | 'failed';
+  metadata?: {
+    analysisResults?: any;
+    extractedText?: string;
+    fileHash?: string;
+  };
+}
+
+export interface ReportDocument {
+  _id?: string;
+  userId: string;
+  projectId?: string;
+  name: string;
+  type: 'Summary' | 'Analysis' | 'Estimate' | 'BQ' | 'Custom';
+  content: string;
+  generatedAt: string;
+  data: any; // Store the actual report data (e.g., AnalyzedBQ)
+  metadata?: {
+    sourceDocuments?: string[];
+    sourceFiles?: string[];
+    generationMethod?: string;
+    confidenceScore?: number;
+  };
+}

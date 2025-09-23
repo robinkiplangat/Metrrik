@@ -1,6 +1,6 @@
 import React from 'react';
 
-type IconName = 'dashboard' | 'folder' | 'chat' | 'file' | 'settings' | 'user' | 'upload' | 'arrow-left' | 'plus' | 'send' | 'download' | 'document' | 'close';
+type IconName = 'dashboard' | 'folder' | 'chat' | 'file' | 'settings' | 'user' | 'upload' | 'arrow-left' | 'plus' | 'send' | 'download' | 'document' | 'close' | 'info' | 'chevron-up' | 'chevron-down' | 'lightbulb' | 'search';
 
 interface IconProps {
   name: IconName;
@@ -22,6 +22,11 @@ const ICONS: Record<IconName, React.ReactElement> = {
   download: <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />,
   document: <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m.75 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />,
   close: <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />,
+  info: <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />,
+  'chevron-up': <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />,
+  'chevron-down': <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />,
+  lightbulb: <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a6.048 6.048 0 01-1.5 0m1.5-2.383a6.048 6.048 0 00-1.5 0m0 0V18a2.25 2.25 0 11-4.5 0v-5.25m0 0a6.01 6.01 0 011.5-.189m-1.5.189a6.01 6.01 0 00-1.5.189m0 0V18a2.25 2.25 0 104.5 0v-5.25m0 0a6.01 6.01 0 00-1.5-.189m1.5.189a6.01 6.01 0 01-1.5.189" />,
+  search: <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />,
 };
 
 const Icon: React.FC<IconProps> = ({ name, className = 'w-6 h-6' }) => {

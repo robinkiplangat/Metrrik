@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Project, ChatMessage } from './types';
 import Sidebar from './components/layout/Sidebar';
 import Dashboard from './components/dashboard/Dashboard';
@@ -10,6 +10,7 @@ import SettingsView from './components/settings/SettingsView';
 import LandingPage from './components/layout/LandingPage';
 import ChatBubble from './components/ui/ChatBubble';
 import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from '@clerk/clerk-react';
+import { initializeDatabase } from './services/databaseInit';
 
 // Mock data for initial projects
 const initialProjects: Project[] = [
@@ -26,11 +27,32 @@ const App: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [isDatabaseInitialized, setIsDatabaseInitialized] = useState<boolean>(false);
   
   // Global chat state for the copilot
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     { id: '1', sender: 'ai', text: `Hello! I'm Q-Sci, your AI construction copilot. I can help you with cost estimates, project planning, quantity surveying, and more. How can I assist you today?` }
   ]);
+
+  // Initialize database on app start
+  useEffect(() => {
+    const initDB = async () => {
+      try {
+        const success = await initializeDatabase();
+        setIsDatabaseInitialized(success);
+        if (success) {
+          console.log('✅ Database initialized successfully');
+        } else {
+          console.warn('⚠️ Database initialization failed, app will continue with limited functionality');
+        }
+      } catch (error) {
+        console.error('❌ Database initialization error:', error);
+        setIsDatabaseInitialized(false);
+      }
+    };
+
+    initDB();
+  }, []);
 
   const handleLogin = () => {
     // This will be handled by Clerk's SignInButton
