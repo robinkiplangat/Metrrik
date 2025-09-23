@@ -24,7 +24,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             CONSTRUCTION INTELLIGENCE.
           </h1>
           <p className="text-lg sm:text-xl text-white leading-relaxed max-w-2xl">
-            For precision, efficiency, and expert insight.
+            Smart tools for smart builders.
           </p>
         </div>
 
@@ -74,12 +74,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             <img 
               src="/docs/imgs/Q-Sci_Logo_clear.png" 
               alt="Q-Sci Logo" 
-              className="h-32 w-auto"
+              className="h-48 w-auto"
             />
           </div>
-          <p className="text-sm text-gray-500 tracking-wider uppercase font-medium">
+          {/* <p className="text-sm text-gray-500 tracking-wider uppercase font-medium">
             SMART CONSTRUCTION SOLUTIONS
-          </p>
+          </p> */}
         </div>
 
         {/* Action Buttons */}
