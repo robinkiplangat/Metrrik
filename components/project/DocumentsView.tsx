@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import type { Project, Document, Template, DocumentVersion } from '../../types';
 import { generateDocumentContent } from '../../services/geminiService';
 import Icon from '../ui/Icon';
+import ConfirmationDialog from '../ui/ConfirmationDialog';
+import NewDocumentModal from './NewDocumentModal';
 
 const initialDocuments: Document[] = [
     { id: 'doc-1', name: 'Preliminary Cost Estimate', type: 'Estimate', createdAt: '2024-07-22T11:30:00Z', content: 'Initial costings for the Runda project, covering foundation and structural work.', versions: [{version: 1, createdAt: '2024-07-22T11:30:00Z', content: 'Initial costings...' }] },
@@ -148,6 +150,8 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
     const [aiDocPrompt, setAiDocPrompt] = useState('');
     const [aiDocType, setAiDocType] = useState<Document['type']>('Estimate');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; doc: Document | null }>({ isOpen: false, doc: null });
+    const [showNewDocumentModal, setShowNewDocumentModal] = useState(false);
 
     // Dummy state for custom templates, in a real app this would be more robust
     const [customTemplates, setCustomTemplates] = useState<Template[]>([]);
@@ -257,10 +261,23 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
         setHistoryDoc(null);
     };
 
-    const handleDeleteDoc = (docId: string) => {
-        if (window.confirm("Are you sure you want to delete this document? This action cannot be undone.")) {
-            setDocuments(docs => docs.filter(d => d.id !== docId));
+    const handleDeleteDoc = (doc: Document) => {
+        setDeleteConfirm({ isOpen: true, doc });
+    };
+
+    const confirmDeleteDoc = () => {
+        if (deleteConfirm.doc) {
+            setDocuments(docs => docs.filter(d => d.id !== deleteConfirm.doc!.id));
         }
+        setDeleteConfirm({ isOpen: false, doc: null });
+    };
+
+    const cancelDeleteDoc = () => {
+        setDeleteConfirm({ isOpen: false, doc: null });
+    };
+
+    const handleCreateNewDocument = (newDocument: Document) => {
+        setDocuments(prev => [newDocument, ...prev]);
     };
 
     const handleSaveFromPreview = (docId: string, newContent: string, newType: Document['type']) => {
@@ -334,7 +351,16 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
                 
                 {/* Documents Table */}
                 <div className="flex-1 flex flex-col overflow-hidden">
-                    <h3 className="text-xl font-semibold text-[#424242] mb-4">Project Documents</h3>
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xl font-semibold text-[#424242]">Project Documents</h3>
+                        <button
+                            onClick={() => setShowNewDocumentModal(true)}
+                            className="flex items-center space-x-2 px-4 py-2 bg-[#0D47A1] text-white rounded-lg hover:bg-blue-800 transition-colors"
+                        >
+                            <Icon name="document" className="w-4 h-4" />
+                            <span>New Document</span>
+                        </button>
+                    </div>
                     <div className="overflow-y-auto">
                         <table className="w-full text-left">
                             <thead className="border-b-2 border-gray-200 sticky top-0 bg-white z-10">
@@ -363,7 +389,7 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
                                         <td className="p-3 text-right space-x-3">
                                             <button onClick={() => setPreviewDoc(doc)} className="font-medium text-[#0D47A1] hover:underline">Preview</button>
                                             <button onClick={() => setHistoryDoc(doc)} className="font-medium text-[#0D47A1] hover:underline">History</button>
-                                            <button onClick={() => handleDeleteDoc(doc.id)} className="font-medium text-red-600 hover:underline">Delete</button>
+                                            <button onClick={() => handleDeleteDoc(doc)} className="font-medium text-red-600 hover:underline">Delete</button>
                                         </td>
                                     </tr>
                                 ))}
@@ -375,6 +401,25 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
             </div>
             {historyDoc && <HistoryModal doc={historyDoc} onClose={() => setHistoryDoc(null)} onRevert={handleRevert} />}
             {previewDoc && <PreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} onSave={handleSaveFromPreview} />}
+            
+            {/* Confirmation Dialog */}
+            <ConfirmationDialog
+                isOpen={deleteConfirm.isOpen}
+                title="Delete Document"
+                message={`Are you sure you want to delete "${deleteConfirm.doc?.name}"? This action cannot be undone and will permanently remove the document and all its versions.`}
+                confirmText="Delete Document"
+                cancelText="Cancel"
+                onConfirm={confirmDeleteDoc}
+                onCancel={cancelDeleteDoc}
+                variant="danger"
+            />
+            
+            {/* New Document Modal */}
+            <NewDocumentModal
+                isOpen={showNewDocumentModal}
+                onClose={() => setShowNewDocumentModal(false)}
+                onCreateDocument={handleCreateNewDocument}
+            />
         </div>
     );
 };

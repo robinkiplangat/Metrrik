@@ -48,7 +48,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ project }) => {
       <div className="flex-1 overflow-hidden">
         {activeTab === 'documents' && <DocumentsView project={project} documents={documents} setDocuments={setDocuments} />}
         {activeTab === 'files' && <FilesView files={files} setFiles={setFiles} setDocuments={setDocuments} />}
-        {activeTab === 'summary' && <SummaryReportView project={project} messages={messages} documents={documents} files={files} />}
+        {activeTab === 'summary' && <SummaryReportView project={project} messages={messages} documents={documents} files={files} setDocuments={setDocuments} />}
       </div>
     </div>
   );

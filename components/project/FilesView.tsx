@@ -124,7 +124,57 @@ const AnalysisModal: React.FC<{
         onSave(markdownContent);
     };
 
-    if (analysisResult.error) { /* Error handling remains the same */ }
+    if (analysisResult.error) {
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+                    <div className="p-6">
+                        <div className="flex items-center space-x-3 mb-4">
+                            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900">Analysis Failed</h3>
+                        </div>
+                        
+                        <p className="text-gray-600 mb-6">{analysisResult.error}</p>
+                        
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                            <h4 className="font-medium text-yellow-800 mb-2">Troubleshooting Tips:</h4>
+                            <ul className="text-sm text-yellow-700 space-y-1">
+                                <li>• Check if your Gemini API key is valid and properly configured</li>
+                                <li>• Ensure you have sufficient API quota remaining</li>
+                                <li>• Try uploading a different image file</li>
+                                <li>• Make sure the image is clear and contains architectural drawings</li>
+                            </ul>
+                        </div>
+                        
+                        <div className="flex justify-end space-x-3">
+                            <button
+                                onClick={onClose}
+                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                            >
+                                Close
+                            </button>
+                            <button
+                                onClick={() => {
+                                    onClose();
+                                    // Retry analysis
+                                    setTimeout(() => {
+                                        // This would trigger a retry - you might want to add a retry function
+                                    }, 100);
+                                }}
+                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                Try Again
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
     
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
@@ -219,10 +269,46 @@ const FilesView: React.FC<FilesViewProps> = ({ files, setFiles, setDocuments }) 
         setAnalysisResult(null);
         try {
             const resultString = await analyzeFloorPlan(file.base64, file.type);
-            setAnalysisResult(JSON.parse(resultString));
+            
+            // Check if the result is an error response
+            if (resultString.includes('"error"')) {
+                const errorResponse = JSON.parse(resultString);
+                if (errorResponse.error) {
+                    setAnalysisResult({ 
+                        error: `API Error: ${errorResponse.error.message || 'Invalid API key. Please check your Gemini API configuration.'}`,
+                        summary: {
+                            totalEstimatedCostKES: 0,
+                            totalWastageCostKES: 0,
+                            confidenceScore: 0
+                        },
+                        billOfQuantities: [],
+                        intelligentSuggestions: []
+                    } as AnalyzedBQ);
+                    return;
+                }
+            }
+            
+            // Try to parse the result as a valid analysis
+            const parsedResult = JSON.parse(resultString);
+            
+            // Validate that the parsed result has the expected structure
+            if (!parsedResult.summary || !parsedResult.billOfQuantities || !parsedResult.intelligentSuggestions) {
+                throw new Error("Invalid response format from AI service");
+            }
+            
+            setAnalysisResult(parsedResult);
         } catch (error) {
             console.error("Analysis failed", error);
-            setAnalysisResult({ error: "An unexpected error occurred during analysis." } as AnalyzedBQ);
+            setAnalysisResult({ 
+                error: `Analysis failed: ${error instanceof Error ? error.message : 'Unknown error occurred. Please check your API key and try again.'}`,
+                summary: {
+                    totalEstimatedCostKES: 0,
+                    totalWastageCostKES: 0,
+                    confidenceScore: 0
+                },
+                billOfQuantities: [],
+                intelligentSuggestions: []
+            } as AnalyzedBQ);
         } finally {
             setIsAnalyzing(null);
         }

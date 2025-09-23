@@ -61,6 +61,13 @@ const App: React.FC = () => {
     setProjects(prev => [newProject, ...prev]);
     setSelectedProject(newProject);
   };
+
+  const handleDeleteProject = (projectId: string) => {
+    setProjects(prev => prev.filter(p => p.id !== projectId));
+    if (selectedProject?.id === projectId) {
+      setSelectedProject(null);
+    }
+  };
   
   const renderContent = () => {
     if (selectedProject) {
@@ -70,7 +77,7 @@ const App: React.FC = () => {
       case 'dashboard':
         return <Dashboard projects={projects.slice(0, 4)} onSelectProject={handleSelectProject} onNewProject={handleCreateNewProject} />;
       case 'projects':
-        return <ProjectsView projects={projects} onSelectProject={handleSelectProject} />;
+        return <ProjectsView projects={projects} onSelectProject={handleSelectProject} onDeleteProject={handleDeleteProject} />;
       case 'settings':
         return <SettingsView />;
       default:

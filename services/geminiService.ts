@@ -135,9 +135,35 @@ export const analyzeFloorPlan = async (imageData: string, mimeType: string): Pro
 
         // The response text will be a stringified JSON.
         return response.text;
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error analyzing floor plan:", error);
-        return JSON.stringify({ error: "Failed to analyze the drawing. The AI model could not process the request. Please ensure the uploaded image is a clear architectural drawing and try again." });
+        
+        // Handle specific API errors
+        if (error.message && error.message.includes('API key not valid')) {
+            return JSON.stringify({ 
+                error: { 
+                    message: "Invalid API key. Please check your Gemini API configuration in your environment variables.",
+                    code: "INVALID_API_KEY"
+                } 
+            });
+        }
+        
+        if (error.message && error.message.includes('quota')) {
+            return JSON.stringify({ 
+                error: { 
+                    message: "API quota exceeded. Please check your Gemini API usage limits.",
+                    code: "QUOTA_EXCEEDED"
+                } 
+            });
+        }
+        
+        // Generic error response
+        return JSON.stringify({ 
+            error: { 
+                message: "Failed to analyze the drawing. Please ensure the uploaded image is a clear architectural drawing and try again.",
+                code: "ANALYSIS_FAILED"
+            } 
+        });
     }
 };
 
