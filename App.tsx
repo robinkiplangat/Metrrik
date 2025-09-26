@@ -10,7 +10,7 @@ import SettingsView from './components/settings/SettingsView';
 import LandingPage from './components/layout/LandingPage';
 import ChatBubble from './components/ui/ChatBubble';
 import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from '@clerk/clerk-react';
-import { initializeDatabase } from './services/databaseInit';
+// Database operations are now handled by the backend API
 
 // Mock data for initial projects
 const initialProjects: Project[] = [
@@ -27,32 +27,14 @@ const App: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [isDatabaseInitialized, setIsDatabaseInitialized] = useState<boolean>(false);
+  // Database is now handled by the backend API
   
   // Global chat state for the copilot
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     { id: '1', sender: 'ai', text: `Hello! I'm Q-Sci, your AI construction copilot. I can help you with cost estimates, project planning, quantity surveying, and more. How can I assist you today?` }
   ]);
 
-  // Initialize database on app start
-  useEffect(() => {
-    const initDB = async () => {
-      try {
-        const success = await initializeDatabase();
-        setIsDatabaseInitialized(success);
-        if (success) {
-          console.log('✅ Database initialized successfully');
-        } else {
-          console.warn('⚠️ Database initialization failed, app will continue with limited functionality');
-        }
-      } catch (error) {
-        console.error('❌ Database initialization error:', error);
-        setIsDatabaseInitialized(false);
-      }
-    };
-
-    initDB();
-  }, []);
+  // Database initialization is now handled by the backend server
 
   const handleLogin = () => {
     // This will be handled by Clerk's SignInButton
