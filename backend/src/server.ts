@@ -24,6 +24,7 @@ import { errorHandler } from './middleware/errorHandler';
 import { notFound } from './middleware/notFound';
 import { logger } from './utils/logger';
 import { connectDatabase } from './config/database';
+import { initializeSwagger, apiTags } from './config/swagger';
 
 // Load environment variables
 dotenv.config();
@@ -37,7 +38,7 @@ const io = new SocketIOServer(server, {
   }
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 5050;
 
 // Security middleware
 app.use(helmet({
@@ -83,7 +84,20 @@ app.use(morgan('combined', {
   }
 }));
 
+// Initialize Swagger documentation
+initializeSwagger(app);
+
 // Health check endpoint
+/**
+ * GET /health
+ * @summary Health check endpoint
+ * @tags System
+ * @return {object} 200 - Health status
+ * @return {string} 200.status - Status message
+ * @return {string} 200.timestamp - Current timestamp
+ * @return {number} 200.uptime - Server uptime in seconds
+ * @return {string} 200.environment - Current environment
+ */
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'OK',

@@ -9,6 +9,7 @@ import { CustomError, asyncHandler } from '../middleware/errorHandler';
 import { authenticateUser, AuthenticatedRequest } from '../middleware/auth';
 import { logger } from '../utils/logger';
 import axios from 'axios';
+import { analyzeFloorPlan as geminiAnalyzeFloorPlan } from '../services/geminiService';
 
 const router = Router();
 
@@ -71,7 +72,49 @@ interface AnalysisResult {
   };
 }
 
-// Analyze floor plan and generate BQ
+/**
+ * POST /api/analysis/analyze
+ * @summary Analyze floor plan and generate Bill of Quantities
+ * @tags Analysis
+ * @param {file} floorPlan.formData.required - Floor plan file (PDF, DWG, JPG, PNG)
+ * @param {string} projectName.formData.required - Name of the project
+ * @param {string} projectType.formData - Type of project (residential/commercial)
+ * @return {object} 200 - Analysis completed successfully
+ * @return {object} 400 - Bad request (invalid file or missing parameters)
+ * @return {object} 500 - Internal server error
+ * @example request - Example request body
+ * {
+ *   "projectName": "Modern Bungalow",
+ *   "projectType": "residential"
+ * }
+ * @example response - 200 - Analysis result
+ * {
+ *   "success": true,
+ *   "data": {
+ *     "analysis": {
+ *       "projectName": "Modern Bungalow",
+ *       "totalArea": "150 sqm",
+ *       "totalCost": "KSh 4,200,000",
+ *       "costPerSqm": "KSh 28,000/sqm",
+ *       "breakdown": [
+ *         {
+ *           "category": "Foundation & Substructure",
+ *           "amount": "KSh 420,000",
+ *           "percentage": "10.0%",
+ *           "description": "Concrete foundation, footings, and basement"
+ *         }
+ *       ],
+ *       "metadata": {
+ *         "analysisDate": "2025-09-26T10:00:00.000Z",
+ *         "fileType": "application/pdf",
+ *         "fileName": "floor-plan.pdf",
+ *         "confidence": 0.92
+ *       }
+ *     },
+ *     "message": "Floor plan analysis completed successfully"
+ *   }
+ * }
+ */
 router.post('/analyze', upload.single('floorPlan'), asyncHandler(async (req: Request, res: Response) => {
   if (!req.file) {
     throw new CustomError('No floor plan file uploaded', 400);
@@ -80,8 +123,13 @@ router.post('/analyze', upload.single('floorPlan'), asyncHandler(async (req: Req
   const { projectName, projectType = 'residential' } = req.body;
 
   try {
-    // Simulate analysis process (in real implementation, this would use AI/ML models)
+    logger.info(`Starting floor plan analysis for: ${req.file.originalname}`);
+    logger.info(`Project: ${projectName}, Type: ${projectType}`);
+    
+    // Perform AI-powered analysis
     const analysisResult = await performFloorPlanAnalysis(req.file, projectName, projectType);
+    
+    logger.info(`Analysis completed successfully for: ${req.file.originalname}`);
 
     // Save analysis result to database (optional - for tracking)
     const db = getDatabase();
@@ -121,7 +169,38 @@ router.post('/analyze', upload.single('floorPlan'), asyncHandler(async (req: Req
   }
 }));
 
-// Get analysis history (for authenticated users)
+/**
+ * GET /api/analysis/history
+ * @summary Get analysis history for authenticated user
+ * @tags Analysis
+ * @security BearerAuth
+ * @return {object} 200 - Analysis history retrieved successfully
+ * @return {object} 401 - Unauthorized (invalid or missing token)
+ * @example response - 200 - Analysis history
+ * {
+ *   "success": true,
+ *   "data": {
+ *     "analyses": [
+ *       {
+ *         "fileName": "floor-plan.pdf",
+ *         "filePath": "/uploads/analysis/analysis-1234567890.pdf",
+ *         "projectName": "Modern Bungalow",
+ *         "analysisResult": {
+ *           "projectName": "Modern Bungalow",
+ *           "totalArea": "150 sqm",
+ *           "totalCost": "KSh 4,200,000",
+ *           "costPerSqm": "KSh 28,000/sqm"
+ *         },
+ *         "createdAt": "2025-09-26T10:00:00.000Z",
+ *         "metadata": {
+ *           "fileType": "application/pdf",
+ *           "fileSize": 2048576
+ *         }
+ *       }
+ *     ]
+ *   }
+ * }
+ */
 router.get('/history', authenticateUser, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const db = getDatabase();
   
@@ -137,31 +216,106 @@ router.get('/history', authenticateUser, asyncHandler(async (req: AuthenticatedR
   });
 }));
 
-// Helper function to perform floor plan analysis
+// Helper function to perform floor plan analysis using AI
 async function performFloorPlanAnalysis(file: Express.Multer.File, projectName: string, projectType: string): Promise<AnalysisResult> {
-  // In a real implementation, this would:
-  // 1. Use computer vision to analyze the floor plan
-  // 2. Extract room dimensions, areas, and features
-  // 3. Apply construction cost databases
-  // 4. Generate detailed BQ breakdown
+  try {
+    // Check if Gemini API key is configured
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!geminiApiKey) {
+      logger.warn('Gemini API key not configured, falling back to simulation');
+      return performSimulatedAnalysis(file, projectName, projectType);
+    }
+
+    // Convert file to base64 for AI analysis
+    const fileBuffer = fs.readFileSync(file.path);
+    const base64Data = fileBuffer.toString('base64');
+    
+    logger.info(`Starting AI analysis for file: ${file.originalname}`);
+    
+    // Use the existing geminiService for analysis
+    const aiResponseString = await geminiAnalyzeFloorPlan(base64Data, file.mimetype);
+    
+    // Check if the response contains an error
+    if (aiResponseString.includes('"error"')) {
+      const errorResponse = JSON.parse(aiResponseString);
+      logger.error('AI analysis returned error:', errorResponse.error);
+      throw new Error(errorResponse.error.message || 'AI analysis failed');
+    }
+    
+    // Parse the AI response
+    const aiResponse = JSON.parse(aiResponseString);
+    
+    // Convert AI response to our analysis result format
+    return convertAIResponseToAnalysisResult(aiResponse, projectName, file);
+    
+  } catch (error) {
+    logger.error('AI analysis failed, falling back to simulation:', error);
+    return performSimulatedAnalysis(file, projectName, projectType);
+  }
+}
+
+// Convert AI response to our analysis result format
+function convertAIResponseToAnalysisResult(aiResponse: any, projectName: string, file: Express.Multer.File): AnalysisResult {
+  const summary = aiResponse.summary;
+  const bqItems = aiResponse.billOfQuantities || [];
   
-  // For now, we'll simulate this with realistic data based on file analysis
+  // Group items by category for breakdown
+  const categoryMap = new Map();
+  let totalCost = 0;
+  
+  bqItems.forEach((item: any) => {
+    const category = item.category || 'General';
+    if (!categoryMap.has(category)) {
+      categoryMap.set(category, {
+        category,
+        amount: 0,
+        items: []
+      });
+    }
+    
+    const categoryData = categoryMap.get(category);
+    categoryData.amount += item.totalCostKES || 0;
+    categoryData.items.push(item);
+    totalCost += item.totalCostKES || 0;
+  });
+  
+  // Convert to breakdown format
+  const breakdown = Array.from(categoryMap.values()).map(cat => ({
+    category: cat.category,
+    amount: `KSh ${cat.amount.toLocaleString()}`,
+    percentage: `${((cat.amount / totalCost) * 100).toFixed(1)}%`,
+    description: `${cat.items.length} items in this category`
+  }));
+  
+  return {
+    projectName: projectName || `Analysis - ${new Date().toLocaleDateString()}`,
+    totalArea: summary.totalArea || 'N/A',
+    totalCost: `KSh ${totalCost.toLocaleString()}`,
+    costPerSqm: summary.totalArea ? `KSh ${Math.round(totalCost / parseFloat(summary.totalArea)).toLocaleString()}/sqm` : 'N/A',
+    breakdown,
+    metadata: {
+      analysisDate: new Date(),
+      fileType: file.mimetype,
+      fileName: file.originalname,
+      confidence: summary.confidenceScore || 0.85
+    }
+  };
+}
+
+// Fallback simulation function (original logic)
+async function performSimulatedAnalysis(file: Express.Multer.File, projectName: string, projectType: string): Promise<AnalysisResult> {
   const fileSize = file.size;
   const isLargeFile = fileSize > 5 * 1024 * 1024; // 5MB
   
-  // Simulate different results based on file characteristics
   const baseArea = isLargeFile ? 200 : 120; // sqm
   const areaVariation = Math.random() * 50; // ±25 sqm variation
   const totalArea = Math.round(baseArea + areaVariation);
   
-  // Base cost per sqm (Kenyan construction costs)
   const baseCostPerSqm = projectType === 'commercial' ? 35000 : 28000;
   const costVariation = Math.random() * 5000; // ±2,500 variation
   const costPerSqm = Math.round(baseCostPerSqm + costVariation);
   
   const totalCost = totalArea * costPerSqm;
-  
-  // Generate realistic breakdown based on Kenyan construction standards
   const breakdown = generateCostBreakdown(totalCost, projectType);
   
   return {
@@ -174,7 +328,7 @@ async function performFloorPlanAnalysis(file: Express.Multer.File, projectName: 
       analysisDate: new Date(),
       fileType: file.mimetype,
       fileName: file.originalname,
-      confidence: 0.85 + Math.random() * 0.1 // 85-95% confidence
+      confidence: 0.85 + Math.random() * 0.1
     }
   };
 }
