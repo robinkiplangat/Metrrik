@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { Document, Template } from '../../types';
+import type { Document, Template } from '../../services/shared/types';
 import { 
   createNewDocument, 
   getClients, 
@@ -10,7 +10,7 @@ import {
   COMMON_TAGS,
   type NewDocumentData,
   type Client
-} from '../../services/documentService';
+} from '../../services/server/documentService';
 
 interface NewDocumentModalProps {
   isOpen: boolean;

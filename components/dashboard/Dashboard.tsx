@@ -1,6 +1,6 @@
 
 import React from 'react';
-import type { Project } from '../../types';
+import type { Project } from '../../services/shared/types';
 import ProjectCard from './ProjectCard';
 import Icon from '../ui/Icon';
 import { useUser } from '@clerk/clerk-react';

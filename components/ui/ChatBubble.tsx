@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChatMessage } from '../../types';
+import { ChatMessage } from '../../services/shared/types';
 import ChatView from '../project/ChatView';
 import Icon from './Icon';
 

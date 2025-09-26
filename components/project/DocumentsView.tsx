@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import type { Project, Document, Template, DocumentVersion } from '../../types';
-import { generateDocumentContent } from '../../services/geminiService';
+import type { Project, Document, Template, DocumentVersion } from '../../services/shared/types';
+import { generateDocumentContent } from '../../services/client/geminiService';
 import Icon from '../ui/Icon';
 import ConfirmationDialog from '../ui/ConfirmationDialog';
 import NewDocumentModal from './NewDocumentModal';

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import type { Project, ChatMessage } from './types';
+import type { Project, ChatMessage } from './services/shared/types';
 import Sidebar from './components/layout/Sidebar';
 import Dashboard from './components/dashboard/Dashboard';
 import ProjectWorkspace from './components/project/ProjectWorkspace';

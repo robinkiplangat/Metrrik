@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Project, ChatMessage, Document, UploadedFile } from '../../types';
+import type { Project, ChatMessage, Document, UploadedFile } from '../../services/shared/types';
 import ChatView from './ChatView';
 import DocumentsView from './DocumentsView';
 import FilesView from './FilesView';

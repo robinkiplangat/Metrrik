@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import type { Project, ChatMessage, Document } from '../../types';
-import { knowledgeBaseService } from '../../services/knowledgeBaseService';
-import { knowledgeGraphService } from '../../services/knowledgeGraphService';
+import type { Project, ChatMessage, Document } from '../../services/shared/types';
+import { knowledgeBaseService } from '../../services/server/knowledgeBaseService';
+import { knowledgeGraphService } from '../../services/server/knowledgeGraphService';
 import { useVectorSearch } from '../../hooks/useVectorSearch';
 import Icon from '../ui/Icon';
 import Logo from '../ui/Logo';

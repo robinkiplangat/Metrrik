@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import type { Project } from '../../types';
+import type { Project } from '../../services/shared/types';
 import Icon from '../ui/Icon';
 import ConfirmationDialog from '../ui/ConfirmationDialog';
 

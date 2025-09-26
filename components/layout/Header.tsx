@@ -1,6 +1,6 @@
 
 import React from 'react';
-import type { Project } from '../../types';
+import type { Project } from '../../services/shared/types';
 import Icon from '../ui/Icon';
 import { UserButton } from '@clerk/clerk-react';
 

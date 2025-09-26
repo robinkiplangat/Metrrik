@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import type { Project, ChatMessage, Document } from '../../types';
-import { generateChatResponse } from '../../services/geminiService';
+import type { Project, ChatMessage, Document } from '../../services/shared/types';
+import { generateChatResponse } from '../../services/client/geminiService';
 import Icon from '../ui/Icon';
 import Logo from '../ui/Logo';
 

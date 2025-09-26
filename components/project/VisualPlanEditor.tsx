@@ -1,6 +1,6 @@
 
 import React, { useRef, useEffect, useState } from 'react';
-import type { UploadedFile } from '../../types';
+import type { UploadedFile } from '../../services/shared/types';
 import Icon from '../ui/Icon';
 
 interface VisualPlanEditorProps {

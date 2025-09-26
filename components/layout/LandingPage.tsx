@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SignInButton, useUser } from '@clerk/clerk-react';
-import CostingModal from '../ui/CostingModal';
-import { analysisApi } from '../../services/apiService';
+import UnifiedAnalysisModal from '../ui/UnifiedAnalysisModal';
+import { analysisApi } from '../../services/client/apiService';
 
 interface LandingPageProps {
   onLogin: () => void;
@@ -28,8 +28,7 @@ interface AnalysisData {
 
 const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [showCostingModal, setShowCostingModal] = useState(false);
-  const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [hasUsedFreeAnalysis, setHasUsedFreeAnalysis] = useState(false);
   const { isSignedIn } = useUser();
@@ -64,43 +63,20 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       return;
     }
 
-    setIsAnalyzing(true);
-    
-    try {
-      const projectName = `Analysis - ${new Date().toLocaleDateString()}`;
-      const result = await analysisApi.analyzeFloorPlan(uploadedFile, projectName, 'residential');
-
-      if (!result.success) {
-        throw new Error(result.error?.message || 'Analysis failed');
-      }
-
-      // Mark that user has used their free analysis (unless in developer mode)
-      const isDeveloper = localStorage.getItem('qsci_developer_mode') === 'true';
-      if (!hasUsedFreeAnalysis && !isDeveloper) {
-        localStorage.setItem('qsci_free_analysis_used', 'true');
-        setHasUsedFreeAnalysis(true);
-      }
-
-      setAnalysisData(result.data.analysis);
-      setShowCostingModal(true);
-    } catch (error) {
-      console.error('Analysis error:', error);
-      alert('Failed to analyze floor plan. Please try again.');
-    } finally {
-      setIsAnalyzing(false);
+    // Mark that user has used their free analysis (unless in developer mode)
+    if (!hasUsedFreeAnalysis && !isDeveloper) {
+      localStorage.setItem('qsci_free_analysis_used', 'true');
+      setHasUsedFreeAnalysis(true);
     }
+
+    setShowAnalysisModal(true);
   };
 
-  const handleSaveDocument = () => {
+  const handleSaveDocument = (content: string) => {
     // TODO: Implement save document functionality
-    console.log('Saving document...');
-    setShowCostingModal(false);
-  };
-
-  const handleStartNewProject = () => {
-    // TODO: Implement start new project functionality
-    console.log('Starting new project...');
-    setShowCostingModal(false);
+    console.log('Saving document with content:', content);
+    setShowAnalysisModal(false);
+    setUploadedFile(null);
   };
 
   return (
@@ -160,7 +136,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           </p>
 
           {/* Analysis input area */}
-          {!showCostingModal && (
+          {!showAnalysisModal && (
             <div className="max-w-2xl mx-auto mb-12">
               <div className="bg-white/15 backdrop-blur-md rounded-2xl p-8 border border-white/30 shadow-2xl">
                 <div className="flex flex-col sm:flex-row gap-4">
@@ -253,19 +229,21 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         </div>
       </div>
 
-      {/* Costing Modal */}
-      <CostingModal
-        isOpen={showCostingModal}
-        onClose={() => {
-          setShowCostingModal(false);
-          setAnalysisData(null);
-          setUploadedFile(null);
-        }}
-        onSaveDocument={handleSaveDocument}
-        onStartNewProject={handleStartNewProject}
-        isAuthenticated={isSignedIn || false}
-        analysisData={analysisData || undefined}
-      />
+      {/* Unified Analysis Modal */}
+      {uploadedFile && (
+        <UnifiedAnalysisModal
+          isOpen={showAnalysisModal}
+          onClose={() => {
+            setShowAnalysisModal(false);
+            setUploadedFile(null);
+          }}
+          onSave={handleSaveDocument}
+          file={uploadedFile}
+          showDocumentPreview={true}
+          showEditableBreakdown={false}
+          title="Floor Plan Analysis"
+        />
+      )}
     </div>
   );
 };

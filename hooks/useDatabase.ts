@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/clerk-react';
-import { userService } from '../services/userService';
-import { projectService } from '../services/projectService';
-import type { Project, Document, UploadedFile, ReportDocument } from '../types';
+import { userService } from '../services/client/userService';
+import { projectService } from '../services/server/projectService';
+import type { Project, Document, UploadedFile, ReportDocument } from '../services/shared/types';
 
 // Hook for database operations
 export const useDatabase = () => {

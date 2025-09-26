@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
-import { vectorService } from '../services/vectorService';
-import type { VectorSearchResult, VectorEmbedding, DocumentVector } from '../services/vectorService';
-import type { Document } from '../types';
+import { vectorService } from '../services/server/vectorService';
+import type { VectorSearchResult, VectorEmbedding, DocumentVector } from '../services/server/vectorService';
+import type { Document } from '../services/shared/types';
 
 // Hook for vector search operations
 export const useVectorSearch = () => {

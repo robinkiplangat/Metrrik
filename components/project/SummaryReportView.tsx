@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import type { Project, ChatMessage, Document, UploadedFile } from '../../types';
-import { generateProjectSummary } from '../../services/geminiService';
+import type { Project, ChatMessage, Document, UploadedFile } from '../../services/shared/types';
+import { generateProjectSummary } from '../../services/client/geminiService';
 import Icon from '../ui/Icon';
 import ConfirmationDialog from '../ui/ConfirmationDialog';
 
