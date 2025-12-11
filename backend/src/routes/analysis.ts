@@ -6,7 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import { getDatabase } from '../config/database';
 import { CustomError, asyncHandler } from '../middleware/errorHandler';
-import { authenticateUser, AuthenticatedRequest } from '../middleware/auth';
+import { authenticateUser, AuthenticatedRequest, optionalAuth } from '../middleware/auth';
 import { logger } from '../utils/logger';
 import axios from 'axios';
 import { analyzeFloorPlan as geminiAnalyzeFloorPlan } from '../services/geminiService';
@@ -69,6 +69,7 @@ interface AnalysisResult {
     fileType: string;
     fileName: string;
     confidence: number;
+    userId?: string;
   };
 }
 
@@ -115,7 +116,7 @@ interface AnalysisResult {
  *   }
  * }
  */
-router.post('/analyze', upload.single('floorPlan'), asyncHandler(async (req: Request, res: Response) => {
+router.post('/analyze', optionalAuth, upload.single('floorPlan'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   if (!req.file) {
     throw new CustomError('No floor plan file uploaded', 400);
   }
@@ -133,7 +134,9 @@ router.post('/analyze', upload.single('floorPlan'), asyncHandler(async (req: Req
 
     // Save analysis result to database (optional - for tracking)
     const db = getDatabase();
-    const analysisRecord = {
+    
+    // Create analysis record object with userId if authenticated
+    const analysisRecord: any = {
       fileName: req.file.originalname,
       filePath: req.file.path,
       projectName: analysisResult.projectName,
@@ -144,6 +147,11 @@ router.post('/analyze', upload.single('floorPlan'), asyncHandler(async (req: Req
         fileSize: req.file.size
       }
     };
+
+    // If user is authenticated, associate the record with them
+    if (req.user && req.user._id) {
+      analysisRecord.userId = req.user._id;
+    }
 
     await db.collection('analysis_results').insertOne(analysisRecord);
 
@@ -204,8 +212,9 @@ router.post('/analyze', upload.single('floorPlan'), asyncHandler(async (req: Req
 router.get('/history', authenticateUser, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const db = getDatabase();
   
+  // Ensure we only fetch analyses for the authenticated user
   const analyses = await db.collection('analysis_results')
-    .find({})
+    .find({ userId: req.user?._id })
     .sort({ createdAt: -1 })
     .limit(20)
     .toArray();
