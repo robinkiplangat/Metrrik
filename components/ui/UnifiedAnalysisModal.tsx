@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { analyzeFloorPlan } from '../../services/client/geminiService';
+import { useUser, useClerk } from '@clerk/clerk-react';
+import { analysisApi } from '../../services/client/apiService';
 import type { AnalyzedBQ, BQItem, UploadedFile } from '../../services/shared/types';
 
 interface UnifiedAnalysisModalProps {
@@ -17,7 +18,7 @@ const formatCurrency = (amount: number): string => {
 };
 
 const formatBqToMarkdown = (analysis: AnalyzedBQ): string => {
-  let md = `# AI-Generated Bill of Quantities\n\n`;
+  let md = `# Draft | Bill of Quantities\n\n`;
   md += `## Summary\n`;
   md += `- **Total Estimated Cost:** ${formatCurrency(analysis.summary.totalEstimatedCostKES)}\n`;
   md += `- **Total Wastage Cost:** ${formatCurrency(analysis.summary.totalWastageCostKES)}\n`;
@@ -41,6 +42,17 @@ const formatBqToMarkdown = (analysis: AnalyzedBQ): string => {
   return md;
 };
 
+// Helper to convert base64 to File
+const base64ToFile = (base64: string, filename: string, mimeType: string): File => {
+  const byteString = atob(base64);
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < byteString.length; i++) {
+    ia[i] = byteString.charCodeAt(i);
+  }
+  return new File([ab], filename, { type: mimeType });
+};
+
 const UnifiedAnalysisModal: React.FC<UnifiedAnalysisModalProps> = ({
   isOpen,
   onClose,
@@ -48,11 +60,15 @@ const UnifiedAnalysisModal: React.FC<UnifiedAnalysisModalProps> = ({
   file,
   showDocumentPreview = true,
   showEditableBreakdown = true,
-  title = "AI Analysis Results"
+  title = "Q-Sci Analysis Results"
 }) => {
+  const { user } = useUser();
+  const clerk = useClerk();
+
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalyzedBQ | null>(null);
   const [editableAnalysis, setEditableAnalysis] = useState<AnalyzedBQ | null>(null);
+  const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -61,7 +77,7 @@ const UnifiedAnalysisModal: React.FC<UnifiedAnalysisModalProps> = ({
     if ('base64' in file && file.base64) {
       return file.base64;
     }
-    
+
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
@@ -86,7 +102,7 @@ const UnifiedAnalysisModal: React.FC<UnifiedAnalysisModalProps> = ({
     try {
       const base64 = await getFileBase64(file);
       const img = new Image();
-      
+
       img.onload = () => {
         // Calculate dimensions to fit canvas while maintaining aspect ratio
         const canvasWidth = canvas.width;
@@ -112,7 +128,7 @@ const UnifiedAnalysisModal: React.FC<UnifiedAnalysisModalProps> = ({
 
         // Clear canvas
         ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-        
+
         // Draw image
         ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
 
@@ -153,19 +169,19 @@ const UnifiedAnalysisModal: React.FC<UnifiedAnalysisModalProps> = ({
     const newBq = [...editableAnalysis.billOfQuantities];
     const item = { ...newBq[index] };
     (item[field] as any) = value;
-    
+
     // Recalculate total if quantity or rate changes
     if (field === 'quantity' || field === 'unitRateKES' || field === 'wastageFactor') {
       item.totalCostKES = (item.quantity * item.unitRateKES) * (1 + item.wastageFactor);
     }
     newBq[index] = item;
-    
+
     // Recalculate summary totals
     const totalEstimatedCostKES = newBq.reduce((sum, i) => sum + i.totalCostKES, 0);
     const totalWastageCostKES = newBq.reduce((sum, i) => sum + (i.quantity * i.unitRateKES * i.wastageFactor), 0);
 
-    setEditableAnalysis(prev => ({ 
-      ...prev!, 
+    setEditableAnalysis(prev => ({
+      ...prev!,
       billOfQuantities: newBq,
       summary: { ...prev!.summary, totalEstimatedCostKES, totalWastageCostKES }
     }));
@@ -176,15 +192,15 @@ const UnifiedAnalysisModal: React.FC<UnifiedAnalysisModalProps> = ({
 
     const newItem: BQItem = {
       itemNumber: (editableAnalysis.billOfQuantities.length + 1).toString(),
-      description: 'New Item', 
-      unit: 'LS', 
-      quantity: 1, 
-      unitRateKES: 0, 
-      wastageFactor: 0.05, 
+      description: 'New Item',
+      unit: 'LS',
+      quantity: 1,
+      unitRateKES: 0,
+      wastageFactor: 0.05,
       totalCostKES: 0
     };
-    setEditableAnalysis(prev => ({ 
-      ...prev!, 
+    setEditableAnalysis(prev => ({
+      ...prev!,
       billOfQuantities: [...prev!.billOfQuantities, newItem]
     }));
   };
@@ -192,13 +208,42 @@ const UnifiedAnalysisModal: React.FC<UnifiedAnalysisModalProps> = ({
   const handleRemoveItem = (index: number) => {
     if (!editableAnalysis) return;
     if (!window.confirm("Are you sure you want to remove this item?")) return;
-    
+
     const newBq = editableAnalysis.billOfQuantities.filter((_, i) => i !== index);
     setEditableAnalysis(prev => ({ ...prev!, billOfQuantities: newBq }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editableAnalysis) return;
+
+    // Check Auth - if not signed in, save locally and prompt login
+    if (!user) {
+      try {
+        localStorage.setItem('pendingAnalysis', JSON.stringify(editableAnalysis));
+        // You might want to save file info too if needed for re-analysis or preview
+        // localStorage.setItem('pendingAnalysisFile', ...); 
+        clerk.openSignIn();
+      } catch (e) {
+        console.error("Failed to save pending analysis locally", e);
+        alert("Please sign in to save your analysis.");
+      }
+      return;
+    }
+
+    // Save to backend if we have an ID (Draft BQ)
+    if (analysisId) {
+      try {
+        await analysisApi.updateAnalysis(analysisId, editableAnalysis);
+        alert('Draft BQ saved successfully!');
+      } catch (error) {
+        console.error('Failed to save draft:', error);
+        alert('Failed to save draft. Please try again.');
+        return;
+      }
+    } else {
+      console.warn("No analysis ID found, cannot save to backend.");
+    }
+
     const markdownContent = formatBqToMarkdown(editableAnalysis);
     onSave(markdownContent);
   };
@@ -209,41 +254,46 @@ const UnifiedAnalysisModal: React.FC<UnifiedAnalysisModalProps> = ({
       const performAnalysis = async () => {
         setIsAnalyzing(true);
         try {
-          const base64 = await getFileBase64(file);
-          const resultString = await analyzeFloorPlan(base64, file.type);
-          
-          // Check if the result is an error response
-          if (resultString.includes('"error"')) {
-            const errorResponse = JSON.parse(resultString);
-            if (errorResponse.error) {
-              setAnalysisResult({ 
-                error: `API Error: ${errorResponse.error.message || 'Invalid API key. Please check your Gemini API configuration.'}`,
-                summary: {
-                  totalEstimatedCostKES: 0,
-                  totalWastageCostKES: 0,
-                  confidenceScore: 0
-                },
-                billOfQuantities: [],
-                intelligentSuggestions: []
-              } as AnalyzedBQ);
-              return;
+          let fileObj: File;
+
+          if ('base64' in file && file.base64) {
+            fileObj = base64ToFile(file.base64, file.name || 'document', file.type || 'application/pdf');
+          } else if (file instanceof File) {
+            fileObj = file;
+          } else {
+            throw new Error("Invalid file format");
+          }
+
+          // Call Backend API
+          console.log("UnifiedAnalysisModal: Calling analyzeFloorPlan...");
+          const response = await analysisApi.analyzeFloorPlan(fileObj, file.name || "Draft Project");
+          console.log("UnifiedAnalysisModal: API Response:", response);
+
+          if (response.success && response.data) {
+            // ApiService wraps the backend response, so we need response.data.data
+            const backendData = response.data as any;
+
+            if (!backendData.data || !backendData.data.analysis) {
+              console.error("UnifiedAnalysisModal: Missing analysis object in nested data", backendData);
+              throw new Error("Invalid server response structure");
             }
+
+            console.log("UnifiedAnalysisModal: Setting analysis result", backendData.data.analysis);
+            setAnalysisResult(backendData.data.analysis);
+            setEditableAnalysis(backendData.data.analysis);
+
+            if (backendData.data.analysisId) {
+              setAnalysisId(backendData.data.analysisId);
+            }
+          } else {
+            console.error("UnifiedAnalysisModal: Analysis failed success=false", response.error);
+            throw new Error(response.error?.message || "Analysis failed");
           }
-          
-          // Try to parse the result as a valid analysis
-          const parsedResult = JSON.parse(resultString);
-          
-          // Validate that the parsed result has the expected structure
-          if (!parsedResult.summary || !parsedResult.billOfQuantities || !parsedResult.intelligentSuggestions) {
-            throw new Error("Invalid response format from AI service");
-          }
-          
-          setAnalysisResult(parsedResult);
-          setEditableAnalysis(parsedResult);
-        } catch (error) {
+
+        } catch (error: any) {
           console.error("Analysis failed", error);
-          setAnalysisResult({ 
-            error: "Failed to analyze the document. Please try again.",
+          setAnalysisResult({
+            error: error.message || "Failed to analyze the document. Please try again.",
             summary: {
               totalEstimatedCostKES: 0,
               totalWastageCostKES: 0,
@@ -306,9 +356,9 @@ const UnifiedAnalysisModal: React.FC<UnifiedAnalysisModalProps> = ({
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900">Analysis Failed</h3>
               </div>
-              
+
               <p className="text-gray-600 mb-6">{analysisResult.error}</p>
-              
+
               <div className="flex justify-end space-x-3">
                 <button
                   onClick={onClose}
@@ -343,9 +393,9 @@ const UnifiedAnalysisModal: React.FC<UnifiedAnalysisModalProps> = ({
             {/* Document Preview - Left Side */}
             {showDocumentPreview && (
               <div className="bg-gray-100 rounded-lg overflow-auto p-2 flex items-center justify-center">
-                <canvas 
-                  ref={canvasRef} 
-                  width={400} 
+                <canvas
+                  ref={canvasRef}
+                  width={400}
                   height={500}
                   className="max-w-full max-h-full border border-gray-300 rounded"
                 />
@@ -386,48 +436,48 @@ const UnifiedAnalysisModal: React.FC<UnifiedAnalysisModalProps> = ({
                     </thead>
                     <tbody>
                       {editableAnalysis.billOfQuantities.map((item, index) => (
-                        <tr 
-                          key={index} 
-                          onMouseEnter={() => setHoveredItem(item.itemNumber)} 
-                          onMouseLeave={() => setHoveredItem(null)} 
+                        <tr
+                          key={index}
+                          onMouseEnter={() => setHoveredItem(item.itemNumber)}
+                          onMouseLeave={() => setHoveredItem(null)}
                           className="border-t hover:bg-yellow-50"
                         >
                           <td className="p-1">
-                            <input 
-                              type="text" 
-                              value={item.description} 
-                              onChange={e => handleBqChange(index, 'description', e.target.value)} 
+                            <input
+                              type="text"
+                              value={item.description}
+                              onChange={e => handleBqChange(index, 'description', e.target.value)}
                               className="w-full p-1 border rounded"
                             />
                           </td>
                           <td className="p-1">
-                            <input 
-                              type="number" 
-                              value={item.quantity} 
-                              onChange={e => handleBqChange(index, 'quantity', parseFloat(e.target.value))} 
+                            <input
+                              type="number"
+                              value={item.quantity}
+                              onChange={e => handleBqChange(index, 'quantity', parseFloat(e.target.value))}
                               className="w-20 p-1 border rounded"
                             />
                           </td>
                           <td className="p-1">
-                            <input 
-                              type="text" 
-                              value={item.unit} 
-                              onChange={e => handleBqChange(index, 'unit', e.target.value)} 
+                            <input
+                              type="text"
+                              value={item.unit}
+                              onChange={e => handleBqChange(index, 'unit', e.target.value)}
                               className="w-12 p-1 border rounded"
                             />
                           </td>
                           <td className="p-1">
-                            <input 
-                              type="number" 
-                              value={item.unitRateKES} 
-                              onChange={e => handleBqChange(index, 'unitRateKES', parseFloat(e.target.value))} 
+                            <input
+                              type="number"
+                              value={item.unitRateKES}
+                              onChange={e => handleBqChange(index, 'unitRateKES', parseFloat(e.target.value))}
                               className="w-24 p-1 border rounded"
                             />
                           </td>
                           <td className="p-1 font-semibold">{item.totalCostKES.toLocaleString()}</td>
                           <td className="p-1">
-                            <button 
-                              onClick={() => handleRemoveItem(index)} 
+                            <button
+                              onClick={() => handleRemoveItem(index)}
                               className="text-red-500 hover:text-red-700"
                             >
                               &times;
@@ -437,8 +487,8 @@ const UnifiedAnalysisModal: React.FC<UnifiedAnalysisModalProps> = ({
                       ))}
                     </tbody>
                   </table>
-                  <button 
-                    onClick={handleAddItem} 
+                  <button
+                    onClick={handleAddItem}
                     className="m-2 text-sm font-medium text-blue-600 hover:text-blue-800"
                   >
                     + Add Item
@@ -468,14 +518,14 @@ const UnifiedAnalysisModal: React.FC<UnifiedAnalysisModalProps> = ({
 
           {/* Footer Actions */}
           <div className="p-4 bg-gray-100 border-t rounded-b-xl flex justify-end space-x-3 flex-shrink-0">
-            <button 
-              onClick={onClose} 
+            <button
+              onClick={onClose}
               className="px-4 py-2 bg-gray-200 text-[#424242] rounded-lg hover:bg-gray-300"
             >
               Close
             </button>
-            <button 
-              onClick={handleSave} 
+            <button
+              onClick={handleSave}
               className="px-4 py-2 bg-[#29B6F6] text-white rounded-lg hover:bg-[#039BE5]"
             >
               Save Analysis

@@ -13,6 +13,12 @@ export interface ApiResponse<T = any> {
 
 export class ApiService {
   private static baseURL = API_BASE_URL;
+  private static tokenGetter: (() => Promise<string | null>) | null = null;
+
+  // Set the token getter function (should be called once at app initialization)
+  static setTokenGetter(getter: () => Promise<string | null>) {
+    this.tokenGetter = getter;
+  }
 
   static async request<T = any>(
     endpoint: string,
@@ -20,11 +26,26 @@ export class ApiService {
   ): Promise<ApiResponse<T>> {
     try {
       const url = `${this.baseURL}${endpoint}`;
-      
+
+      // Get auth token if available
+      let authToken: string | null = null;
+      if (this.tokenGetter) {
+        try {
+          authToken = await this.tokenGetter();
+        } catch (error) {
+          console.warn('Failed to get auth token:', error);
+        }
+      }
+
       // Only set Content-Type for non-FormData requests
       const defaultHeaders: Record<string, string> = {};
       if (!(options.body instanceof FormData)) {
         defaultHeaders['Content-Type'] = 'application/json';
+      }
+
+      // Add authorization header if token exists
+      if (authToken) {
+        defaultHeaders['Authorization'] = `Bearer ${authToken}`;
       }
 
       const config: RequestInit = {
@@ -36,11 +57,11 @@ export class ApiService {
       };
 
       const response = await fetch(url, config);
-      
+
       // Check if response is JSON before parsing
       const contentType = response.headers.get('content-type');
       let data;
-      
+
       if (contentType && contentType.includes('application/json')) {
         data = await response.json();
       } else {
@@ -137,6 +158,26 @@ export const analysisApi = {
   async getAnalysisHistory() {
     return ApiService.get('/api/analysis/history');
   },
+
+  async updateAnalysis(id: string, data: any) {
+    return ApiService.put(`/api/analysis/${id}`, data);
+  },
+};
+
+export const projectsApi = {
+  async getProjects() {
+    return ApiService.get('/api/projects');
+  },
+
+  async createProject(data: { name: string; type: string; description?: string }) {
+    return ApiService.post('/api/projects', data);
+  }
+};
+
+export const documentsApi = {
+  async createDocument(data: { projectId: string; title: string; content: string; type: string }) {
+    return ApiService.post('/api/documents', data);
+  }
 };
 
 export default ApiService;

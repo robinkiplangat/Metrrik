@@ -35,13 +35,13 @@ import { connectDatabase } from './config/database';
 import { initializeSwagger, apiTags } from './config/swagger';
 
 // Import enhanced security middleware
-import { 
-  requestCorrelation, 
-  securityHeaders, 
+import {
+  requestCorrelation,
+  securityHeaders,
   createRateLimiter,
   fileUploadSecurity,
   validateRequest,
-  validateApiKey 
+  validateApiKey
 } from './middleware/security';
 
 // Load environment variables
@@ -90,7 +90,7 @@ app.use(compression());
 app.use(morgan((tokens, req, res) => {
   const correlationId = (req as any).correlationId || 'unknown';
   const userId = (req as any).user?.id || 'anonymous';
-  
+
   return [
     tokens.method(req, res),
     tokens.url(req, res),
@@ -128,7 +128,7 @@ initializeSwagger(app);
  */
 app.get('/health', (req, res) => {
   const correlationId = (req as any).correlationId;
-  
+
   // Get algorithm system status
   const algorithmSystemStatus = {
     orchestrator: algorithmOrchestrator ? 'healthy' : 'unhealthy',
@@ -226,7 +226,7 @@ async function startServer() {
       logger.info(`🧪 A/B Testing: Framework ready`);
       logger.info(`📈 Analytics: Comprehensive dashboard available`);
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('❌ Failed to start server:', error);
     process.exit(1);
   }
@@ -237,15 +237,15 @@ async function initializeAlgorithmSystem() {
   try {
     // Register default algorithms
     await registerDefaultAlgorithms();
-    
+
     // Set up algorithm monitoring
     setupAlgorithmMonitoring();
-    
+
     // Initialize analytics dashboards
     await initializeAnalyticsDashboards();
-    
+
     logger.info('Algorithm management system fully operational');
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Failed to initialize algorithm system:', error);
     throw error;
   }
@@ -254,7 +254,7 @@ async function initializeAlgorithmSystem() {
 // Register default algorithms
 async function registerDefaultAlgorithms() {
   const { AlgorithmCategory, AlgorithmPriority } = await import('./services/algorithmOrchestrator');
-  
+
   const defaultAlgorithms = [
     {
       id: 'cost-estimation-v1',
@@ -350,7 +350,7 @@ function setupAlgorithmMonitoring() {
 // Initialize analytics dashboards
 async function initializeAnalyticsDashboards() {
   const { WidgetType } = await import('./services/algorithmAnalytics');
-  
+
   const defaultDashboard = {
     id: 'default-algorithm-dashboard',
     name: 'Algorithm Performance Dashboard',

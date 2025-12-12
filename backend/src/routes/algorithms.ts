@@ -1,11 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { logger } from '../utils/logger';
-import { 
+import {
   algorithmOrchestrator,
   AlgorithmDefinition,
   AlgorithmCategory,
   AlgorithmPriority,
-  ExecutionStrategy 
+  ExecutionStrategy
 } from '../services/algorithmOrchestrator';
 import { algorithmRegistry } from '../services/algorithmRegistry';
 import { algorithmMonitoring } from '../services/algorithmMonitoring';
@@ -138,7 +138,7 @@ router.post('/execute', validateRequest(algorithmExecutionSchema), asyncHandler(
       data: result,
       correlationId,
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Algorithm execution failed', {
       algorithmId,
       correlationId,
@@ -212,7 +212,7 @@ router.post('/execute-strategy', asyncHandler(async (req: Request, res: Response
       data: results,
       correlationId,
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Strategy execution failed', {
       strategyType: strategy.type,
       correlationId,
@@ -274,7 +274,7 @@ router.post('/pipeline/execute', validateRequest(pipelineExecutionSchema), async
       data: result,
       correlationId,
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Pipeline execution failed', {
       pipelineId,
       correlationId,
@@ -339,7 +339,7 @@ router.post('/ab-test/execute', validateRequest(abTestSchema), asyncHandler(asyn
       data: result,
       correlationId,
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('A/B test execution failed', {
       testId,
       correlationId,
@@ -395,7 +395,7 @@ router.get('/metrics/:algorithmId', asyncHandler(async (req: Request, res: Respo
       },
       correlationId,
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Failed to get algorithm metrics', {
       algorithmId,
       correlationId,
@@ -439,7 +439,7 @@ router.get('/analytics/dashboard/:dashboardId', asyncHandler(async (req: Request
       data: dashboardData,
       correlationId,
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Failed to get dashboard data', {
       dashboardId,
       correlationId,
@@ -475,7 +475,7 @@ router.get('/analytics/system', asyncHandler(async (req: Request, res: Response)
       data: systemAnalytics,
       correlationId,
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Failed to get system analytics', {
       correlationId,
       error: error.message,
@@ -522,7 +522,7 @@ router.get('/ab-test/:testId/statistics', asyncHandler(async (req: Request, res:
       },
       correlationId,
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Failed to get A/B test statistics', {
       testId,
       correlationId,
@@ -568,7 +568,7 @@ router.get('/registry', asyncHandler(async (req: Request, res: Response) => {
       },
       correlationId,
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Failed to get algorithm registry', {
       correlationId,
       error: error.message,
@@ -617,7 +617,7 @@ router.get('/health', asyncHandler(async (req: Request, res: Response) => {
       },
       correlationId,
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Failed to get algorithm system health', {
       correlationId,
       error: error.message,

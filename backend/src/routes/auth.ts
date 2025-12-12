@@ -28,7 +28,7 @@ router.post('/register', validateUser, asyncHandler(async (req: Request, res: Re
   try {
     // Check if user already exists
     const existingUser = await db.collection('users').findOne({ clerkUserId });
-    
+
     if (existingUser) {
       // Update existing user
       const updateData: Partial<User> = {
@@ -45,7 +45,7 @@ router.post('/register', validateUser, asyncHandler(async (req: Request, res: Re
       );
 
       logger.info(`User updated: ${email}`);
-      
+
       res.json({
         success: true,
         data: {
@@ -71,9 +71,9 @@ router.post('/register', validateUser, asyncHandler(async (req: Request, res: Re
       };
 
       const result = await db.collection('users').insertOne(newUser);
-      
+
       logger.info(`New user registered: ${email}`);
-      
+
       res.status(201).json({
         success: true,
         data: {
@@ -82,7 +82,7 @@ router.post('/register', validateUser, asyncHandler(async (req: Request, res: Re
         }
       });
     }
-  } catch (error) {
+  } catch (error: any) {
     logger.error('User registration error:', error);
     throw new CustomError('Failed to register user', 500);
   }
@@ -94,7 +94,7 @@ router.get('/profile/:clerkUserId', asyncHandler(async (req: Request, res: Respo
   const db = getDatabase();
 
   const user = await db.collection('users').findOne({ clerkUserId });
-  
+
   if (!user) {
     throw new CustomError('User not found', 404);
   }
@@ -163,7 +163,7 @@ router.get('/stats/:clerkUserId', asyncHandler(async (req: Request, res: Respons
   const db = getDatabase();
 
   const user = await db.collection('users').findOne({ clerkUserId });
-  
+
   if (!user) {
     throw new CustomError('User not found', 404);
   }

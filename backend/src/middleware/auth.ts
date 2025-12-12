@@ -2,6 +2,12 @@ import { Request, Response, NextFunction } from 'express';
 import { getDatabase } from '../config/database';
 import { CustomError } from './errorHandler';
 import { logger } from '../utils/logger';
+import { createClerkClient } from '@clerk/backend';
+
+// Initialize Clerk client
+const clerkClient = createClerkClient({
+  secretKey: process.env.CLERK_SECRET_KEY
+});
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -21,27 +27,68 @@ export const authenticateUser = async (
 ): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       throw new CustomError('Access token required', 401);
     }
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    
-    // For now, we'll use a simple token validation
-    // In production, you should validate the JWT token from Clerk
+
     if (!token || token === 'undefined') {
       throw new CustomError('Invalid token', 401);
     }
 
-    // Get user from database using the token
+    // Verify the session token with Clerk
+    let clerkUserId: string;
+    try {
+      const session = await clerkClient.sessions.verifySession(token, token);
+      if (!session || !session.userId) {
+        throw new CustomError('Invalid token', 401);
+      }
+      clerkUserId = session.userId;
+    } catch (error: any) {
+      logger.error('Token verification failed:', error);
+      throw new CustomError('Invalid or expired token', 401);
+    }
+
+    // Get or create user in database
     const db = getDatabase();
-    const user = await db.collection('users').findOne({ 
-      clerkUserId: token // This should be the actual user ID from Clerk
-    });
+    let user = await db.collection('users').findOne({ clerkUserId });
 
     if (!user) {
-      throw new CustomError('User not found', 401);
+      // Auto-create user on first authentication
+      try {
+        const clerkUser = await clerkClient.users.getUser(clerkUserId);
+
+        const newUser = {
+          clerkUserId,
+          email: clerkUser.emailAddresses[0]?.emailAddress || '',
+          firstName: clerkUser.firstName || undefined,
+          lastName: clerkUser.lastName || undefined,
+          createdAt: new Date(),
+          lastLoginAt: new Date(),
+          isActive: true,
+          preferences: {
+            theme: 'light',
+            notifications: true,
+            defaultProjectType: 'residential'
+          }
+        };
+
+        const result = await db.collection('users').insertOne(newUser);
+        user = { ...newUser, _id: result.insertedId };
+
+        logger.info(`Auto-created user: ${newUser.email}`);
+      } catch (error: any) {
+        logger.error('Failed to auto-create user:', error);
+        throw new CustomError('Failed to create user account', 500);
+      }
+    } else {
+      // Update last login time
+      await db.collection('users').updateOne(
+        { clerkUserId },
+        { $set: { lastLoginAt: new Date() } }
+      );
     }
 
     // Check if user is active
@@ -71,22 +118,22 @@ export const optionalAuth = async (
 ): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       // No token provided, continue without authentication
       return next();
     }
 
     const token = authHeader.substring(7);
-    
+
     if (!token || token === 'undefined') {
       return next();
     }
 
     // Try to authenticate, but don't fail if it doesn't work
     const db = getDatabase();
-    const user = await db.collection('users').findOne({ 
-      clerkUserId: token 
+    const user = await db.collection('users').findOne({
+      clerkUserId: token
     });
 
     if (user && user.isActive) {
@@ -118,7 +165,7 @@ export const requireProjectAccess = async (
     }
 
     const projectId = req.params.projectId || req.body.projectId;
-    
+
     if (!projectId) {
       throw new CustomError('Project ID required', 400);
     }

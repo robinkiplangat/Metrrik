@@ -54,18 +54,31 @@ const upload = multer({
   }
 });
 
-// Interface for analysis result
+// Interface for analysis result matching frontend AnalyzedBQ
 interface AnalysisResult {
-  projectName: string;
-  totalArea: string;
-  totalCost: string;
-  costPerSqm: string;
-  breakdown: Array<{
-    category: string;
-    amount: string;
-    percentage: string;
-    description?: string;
+  summary: {
+    totalEstimatedCostKES: number;
+    totalWastageCostKES: number;
+    confidenceScore: number;
+    totalArea?: number; // Kept for backend reference
+  };
+  billOfQuantities: Array<{
+    itemNumber: string;
+    description: string;
+    unit: string;
+    quantity: number;
+    unitRateKES: number;
+    wastageFactor: number;
+    totalCostKES: number;
+    category?: string;
   }>;
+  intelligentSuggestions: Array<{
+    suggestionType: string;
+    originalItem: string;
+    suggestion: string;
+    impact: string;
+  }>;
+  projectName: string;
   metadata: {
     analysisDate: Date;
     fileType: string;
@@ -127,86 +140,95 @@ router.post('/analyze', optionalAuth, upload.single('floorPlan'), asyncHandler(a
 
   try {
     logger.info(`Starting floor plan analysis for: ${req.file.originalname}`);
-    logger.info(`Project: ${projectName}, Type: ${projectType}`);
 
     // Perform AI-powered analysis
     const analysisResult = await performFloorPlanAnalysis(req.file, projectName, projectType);
 
     logger.info(`Analysis completed successfully for: ${req.file.originalname}`);
 
-    // Save analysis result to database (optional - for tracking)
+    // Save to DB
     const db = getDatabase();
 
-    // Upload to S3 if configured
-    let fileUrl = req.file.path; // Default to local path
+    // Upload to S3 if configured (logic consolidated)
+    let fileUrl = req.file.path;
     try {
       const userId = req.user ? req.user._id : 'anonymous';
-      // Use 'analysis' fileType to trigger the specific bucket/prefix logic
       const uploadResult = await fileStorageService.uploadFile(
         req.file,
-        projectName.replace(/[^a-zA-Z0-9]/g, '_'), // Sanitize project name for path
+        projectName.replace(/[^a-zA-Z0-9]/g, '_'),
         userId,
         {},
         'analysis'
       );
-
       if (uploadResult.success && uploadResult.url) {
         fileUrl = uploadResult.url;
-        logger.info(`File uploaded to storage: ${fileUrl}`);
-
-        // Clean up local staging file
-        /* 
-           Uncomment to delete local file after S3 upload. 
-           Kept commented for now to persist local copy as backup/cache if needed 
-           or if user wants to see it in 'uploads' folder for debugging.
-        */
         // if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
       }
-    } catch (uploadError) {
-      logger.error('Failed to upload file to storage, falling back to local:', uploadError);
-      // Continue with local path
+    } catch (uploadError: any) {
+      logger.error('Failed to upload file to storage:', uploadError);
     }
 
-    // Create analysis record object with userId if authenticated
     const analysisRecord: any = {
       fileName: req.file.originalname,
       filePath: fileUrl,
       projectName: analysisResult.projectName,
       analysisResult,
       createdAt: new Date(),
-      metadata: {
-        fileType: req.file.mimetype,
-        fileSize: req.file.size
-      }
+      metadata: analysisResult.metadata
     };
 
-    // If user is authenticated, associate the record with them
     if (req.user && req.user._id) {
       analysisRecord.userId = req.user._id;
     }
 
-    await db.collection('analysis_results').insertOne(analysisRecord);
-
-    logger.info(`Floor plan analysis completed for: ${req.file.originalname}`);
+    const result = await db.collection('analysis_results').insertOne(analysisRecord);
 
     res.json({
       success: true,
       data: {
         analysis: analysisResult,
+        analysisId: result.insertedId,
         message: 'Floor plan analysis completed successfully'
       }
     });
 
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Analysis error:', error);
-
-    // Clean up uploaded file on error
     if (fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
-
     throw new CustomError('Failed to analyze floor plan', 500);
   }
+}));
+
+/**
+ * PUT /api/analysis/:id
+ * @summary Update an existing analysis (Save Draft BQ)
+ * @tags Analysis
+ * @param {string} id.path.required - Analysis ID
+ * @param {object} body.required - Analysis update data
+ * @return {object} 200 - Analysis updated successfully
+ */
+router.put('/:id', authenticateUser, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const updates = req.body;
+  const db = getDatabase();
+
+  if (!ObjectId.isValid(id)) throw new CustomError('Invalid analysis ID', 400);
+
+  const existingAnalysis = await db.collection('analysis_results').findOne({
+    _id: new ObjectId(id),
+    userId: req.user?._id
+  });
+
+  if (!existingAnalysis) throw new CustomError('Analysis not found or unauthorized', 404);
+
+  await db.collection('analysis_results').updateOne(
+    { _id: new ObjectId(id) },
+    { $set: { analysisResult: updates, updatedAt: new Date() } }
+  );
+
+  res.json({ success: true, data: { message: 'Analysis draft saved successfully' } });
 }));
 
 /**
@@ -243,187 +265,141 @@ router.post('/analyze', optionalAuth, upload.single('floorPlan'), asyncHandler(a
  */
 router.get('/history', authenticateUser, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const db = getDatabase();
-
-  // Ensure we only fetch analyses for the authenticated user
   const analyses = await db.collection('analysis_results')
     .find({ userId: req.user?._id })
     .sort({ createdAt: -1 })
     .limit(20)
     .toArray();
 
-  res.json({
-    success: true,
-    data: { analyses }
-  });
+  res.json({ success: true, data: { analyses } });
 }));
 
-// Helper function to perform floor plan analysis using AI
+
+// Helper function to perform floor plan analysis
 async function performFloorPlanAnalysis(file: Express.Multer.File, projectName: string, projectType: string): Promise<AnalysisResult> {
   try {
-    // Check if Gemini API key is configured
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) {
       logger.warn('Gemini API key not configured, falling back to simulation');
       return performSimulatedAnalysis(file, projectName, projectType);
     }
 
-    // Convert file to base64 for AI analysis
     const fileBuffer = fs.readFileSync(file.path);
     const base64Data = fileBuffer.toString('base64');
-
-    logger.info(`Starting AI analysis for file: ${file.originalname}`);
-
-    // Use the existing geminiService for analysis
     const aiResponseString = await geminiAnalyzeFloorPlan(base64Data, file.mimetype);
 
-    // Check if the response contains an error
     if (aiResponseString.includes('"error"')) {
       const errorResponse = JSON.parse(aiResponseString);
-      logger.error('AI analysis returned error:', errorResponse.error);
       throw new Error(errorResponse.error.message || 'AI analysis failed');
     }
 
-    // Parse the AI response
     const aiResponse = JSON.parse(aiResponseString);
-
-    // Convert AI response to our analysis result format
     return convertAIResponseToAnalysisResult(aiResponse, projectName, file);
 
-  } catch (error) {
-    logger.error('AI analysis failed, falling back to simulation:', error);
+  } catch (error: any) {
+    logger.error('AI analysis failed/fallback:', error);
     return performSimulatedAnalysis(file, projectName, projectType);
   }
 }
 
-// Convert AI response to our analysis result format
 function convertAIResponseToAnalysisResult(aiResponse: any, projectName: string, file: Express.Multer.File): AnalysisResult {
-  const summary = aiResponse.summary;
-  const bqItems = aiResponse.billOfQuantities || [];
+  // Ensure strict number types
+  const summary = {
+    totalEstimatedCostKES: Number(aiResponse.summary?.totalEstimatedCostKES || 0),
+    totalWastageCostKES: Number(aiResponse.summary?.totalWastageCostKES || 0),
+    confidenceScore: Number(aiResponse.summary?.confidenceScore || 0.85),
+    totalArea: Number(aiResponse.summary?.totalArea || 0)
+  };
 
-  // Group items by category for breakdown
-  const categoryMap = new Map();
-  let totalCost = 0;
-
-  bqItems.forEach((item: any) => {
-    const category = item.category || 'General';
-    if (!categoryMap.has(category)) {
-      categoryMap.set(category, {
-        category,
-        amount: 0,
-        items: []
-      });
-    }
-
-    const categoryData = categoryMap.get(category);
-    categoryData.amount += item.totalCostKES || 0;
-    categoryData.items.push(item);
-    totalCost += item.totalCostKES || 0;
-  });
-
-  // Convert to breakdown format
-  const breakdown = Array.from(categoryMap.values()).map(cat => ({
-    category: cat.category,
-    amount: `KSh ${cat.amount.toLocaleString()}`,
-    percentage: `${((cat.amount / totalCost) * 100).toFixed(1)}%`,
-    description: `${cat.items.length} items in this category`
+  const billOfQuantities = (aiResponse.billOfQuantities || []).map((item: any) => ({
+    itemNumber: item.itemNumber || '0',
+    description: item.description || '',
+    unit: item.unit || 'LS',
+    quantity: Number(item.quantity || 0),
+    unitRateKES: Number(item.unitRateKES || 0),
+    wastageFactor: Number(item.wastageFactor || 0.05),
+    totalCostKES: Number(item.totalCostKES || 0),
+    category: item.category
   }));
 
+  const intelligentSuggestions = aiResponse.intelligentSuggestions || [];
+
   return {
+    summary,
+    billOfQuantities,
+    intelligentSuggestions,
     projectName: projectName || `Analysis - ${new Date().toLocaleDateString()}`,
-    totalArea: summary.totalArea || 'N/A',
-    totalCost: `KSh ${totalCost.toLocaleString()}`,
-    costPerSqm: summary.totalArea ? `KSh ${Math.round(totalCost / parseFloat(summary.totalArea)).toLocaleString()}/sqm` : 'N/A',
-    breakdown,
     metadata: {
       analysisDate: new Date(),
       fileType: file.mimetype,
       fileName: file.originalname,
-      confidence: summary.confidenceScore || 0.85
+      confidence: summary.confidenceScore
     }
   };
 }
 
-// Fallback simulation function (original logic)
 async function performSimulatedAnalysis(file: Express.Multer.File, projectName: string, projectType: string): Promise<AnalysisResult> {
   const fileSize = file.size;
-  const isLargeFile = fileSize > 5 * 1024 * 1024; // 5MB
+  const isLargeFile = fileSize > 5 * 1024 * 1024;
+  const baseArea = isLargeFile ? 200 : 120;
 
-  const baseArea = isLargeFile ? 200 : 120; // sqm
-  const areaVariation = Math.random() * 50; // ±25 sqm variation
-  const totalArea = Math.round(baseArea + areaVariation);
+  // Categorized breakdown for simulation
+  const categories = [
+    { name: "Excavation & Earthworks", percent: 0.05 },
+    { name: "Foundation & Substructure", percent: 0.15 },
+    { name: "Superstructure (Walls)", percent: 0.25 },
+    { name: "Roofing", percent: 0.12 },
+    { name: "Flooring", percent: 0.08 },
+    { name: "Electrical", percent: 0.08 },
+    { name: "Plumbing", percent: 0.07 },
+    { name: "Finishing", percent: 0.15 },
+    { name: "Labor", percent: 0.05 }
+  ];
 
-  const baseCostPerSqm = projectType === 'commercial' ? 35000 : 28000;
-  const costVariation = Math.random() * 5000; // ±2,500 variation
-  const costPerSqm = Math.round(baseCostPerSqm + costVariation);
+  const baseCost = projectType === 'commercial' ? 5000000 : 3500000;
+  const totalEstimatedCostKES = Math.round(baseCost * (0.9 + Math.random() * 0.2));
 
-  const totalCost = totalArea * costPerSqm;
-  const breakdown = generateCostBreakdown(totalCost, projectType);
+  const billOfQuantities = categories.map((cat, index) => {
+    const itemCost = Math.round(totalEstimatedCostKES * cat.percent);
+    const unitRate = Math.round(itemCost / 10); // Dummy calc
+    return {
+      itemNumber: (index + 1).toString(),
+      description: `${cat.name} generic implementation`,
+      unit: 'Item',
+      quantity: 10,
+      unitRateKES: unitRate,
+      wastageFactor: 0.05,
+      totalCostKES: itemCost,
+      category: cat.name
+    };
+  });
+
+  const totalWastageCostKES = Math.round(totalEstimatedCostKES * 0.05);
 
   return {
-    projectName: projectName || `Analysis - ${new Date().toLocaleDateString()}`,
-    totalArea: `${totalArea} sqm`,
-    totalCost: `KSh ${totalCost.toLocaleString()}`,
-    costPerSqm: `KSh ${costPerSqm.toLocaleString()}/sqm`,
-    breakdown,
+    summary: {
+      totalEstimatedCostKES,
+      totalWastageCostKES,
+      confidenceScore: 0.92,
+      totalArea: baseArea
+    },
+    billOfQuantities,
+    intelligentSuggestions: [
+      {
+        suggestionType: "Cost Saving",
+        originalItem: "High-end finishing",
+        suggestion: "Use alternative local ceramic tiles",
+        impact: "High"
+      }
+    ],
+    projectName: projectName || "Simulated Project",
     metadata: {
       analysisDate: new Date(),
       fileType: file.mimetype,
       fileName: file.originalname,
-      confidence: 0.85 + Math.random() * 0.1
+      confidence: 0.92
     }
   };
-}
-
-// Generate realistic cost breakdown
-function generateCostBreakdown(totalCost: number, projectType: string): Array<{
-  category: string;
-  amount: string;
-  percentage: string;
-  description?: string;
-}> {
-  const breakdowns = {
-    residential: [
-      { category: "Excavation & Earthworks", percentage: 4.2, description: "Site preparation and foundation excavation" },
-      { category: "Foundation & Substructure", percentage: 10.0, description: "Concrete foundation, footings, and basement" },
-      { category: "Superstructure (Walls)", percentage: 20.0, description: "Masonry walls, structural elements" },
-      { category: "Roofing", percentage: 8.0, description: "Roof structure, tiles, and waterproofing" },
-      { category: "Flooring", percentage: 6.0, description: "Floor finishes and subfloor preparation" },
-      { category: "Electrical Installation", percentage: 4.0, description: "Wiring, fixtures, and electrical systems" },
-      { category: "Plumbing & Sanitary", percentage: 3.0, description: "Water supply, drainage, and fixtures" },
-      { category: "Finishing (Paint, Tiles)", percentage: 10.0, description: "Interior and exterior finishes" },
-      { category: "Windows & Doors", percentage: 8.0, description: "All openings and hardware" },
-      { category: "Labor & Supervision", percentage: 30.0, description: "Construction labor and project management" },
-      { category: "Contingency (5%)", percentage: 5.0, description: "Unforeseen costs and variations" },
-      { category: "Professional Fees", percentage: 6.0, description: "Architect, engineer, and consultant fees" }
-    ],
-    commercial: [
-      { category: "Excavation & Earthworks", percentage: 3.5, description: "Site preparation and foundation excavation" },
-      { category: "Foundation & Substructure", percentage: 12.0, description: "Reinforced concrete foundation and basement" },
-      { category: "Superstructure (Walls)", percentage: 25.0, description: "Steel/concrete frame and cladding" },
-      { category: "Roofing", percentage: 6.0, description: "Commercial roofing system" },
-      { category: "Flooring", percentage: 8.0, description: "Commercial grade flooring" },
-      { category: "Electrical Installation", percentage: 8.0, description: "Commercial electrical systems" },
-      { category: "Plumbing & Sanitary", percentage: 4.0, description: "Commercial plumbing systems" },
-      { category: "HVAC Systems", percentage: 10.0, description: "Heating, ventilation, and air conditioning" },
-      { category: "Finishing", percentage: 8.0, description: "Interior and exterior finishes" },
-      { category: "Windows & Doors", percentage: 6.0, description: "Commercial glazing and doors" },
-      { category: "Labor & Supervision", percentage: 25.0, description: "Construction labor and management" },
-      { category: "Contingency (5%)", percentage: 5.0, description: "Unforeseen costs and variations" },
-      { category: "Professional Fees", percentage: 8.0, description: "Design and engineering fees" }
-    ]
-  };
-
-  const breakdown = breakdowns[projectType as keyof typeof breakdowns] || breakdowns.residential;
-
-  return breakdown.map(item => {
-    const amount = Math.round(totalCost * (item.percentage / 100));
-    return {
-      category: item.category,
-      amount: `KSh ${amount.toLocaleString()}`,
-      percentage: `${item.percentage}%`,
-      description: item.description
-    };
-  });
 }
 
 export default router;

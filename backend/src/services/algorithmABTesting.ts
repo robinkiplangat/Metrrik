@@ -177,13 +177,14 @@ export class AlgorithmABTesting extends EventEmitter {
       this.emit('testCreated', definition);
       return definition.id;
 
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to create A/B test', {
         testName: definition.name,
         error: error.message,
       });
       throw error;
     }
+
   }
 
   // Start an A/B test
@@ -253,7 +254,7 @@ export class AlgorithmABTesting extends EventEmitter {
       }
 
       // Get or assign variant
-      const variantId = this.getUserVariant(test, context.userId);
+      const variantId = this.assignUserVariant(test, context.userId);
       const variant = test.variants.find(v => v.id === variantId);
       if (!variant) {
         throw new Error(`Variant ${variantId} not found`);
@@ -292,9 +293,9 @@ export class AlgorithmABTesting extends EventEmitter {
 
       return executionResult;
 
-    } catch (error) {
+    } catch (error: any) {
       const executionTime = performance.now() - startTime;
-      
+
       logger.error('A/B test execution failed', {
         testId,
         userId: context.userId,
@@ -304,6 +305,7 @@ export class AlgorithmABTesting extends EventEmitter {
 
       throw error;
     }
+
   }
 
   // Get test statistics
@@ -333,10 +335,10 @@ export class AlgorithmABTesting extends EventEmitter {
     }
 
     const statistics = this.getTestStatistics(testId);
-    const controlStats = statistics.find(s => 
+    const controlStats = statistics.find(s =>
       test.variants.find(v => v.id === s.variantId)?.isControl
     );
-    const treatmentStats = statistics.filter(s => 
+    const treatmentStats = statistics.filter(s =>
       !test.variants.find(v => v.id === s.variantId)?.isControl
     );
 
@@ -345,14 +347,14 @@ export class AlgorithmABTesting extends EventEmitter {
     }
 
     // Calculate improvement
-    const bestTreatment = treatmentStats.reduce((best, current) => 
-      current.customMetrics[test.metrics.primaryMetric] > 
-      best.customMetrics[test.metrics.primaryMetric] ? current : best
+    const bestTreatment = treatmentStats.reduce((best, current) =>
+      current.customMetrics[test.metrics.primaryMetric] >
+        best.customMetrics[test.metrics.primaryMetric] ? current : best
     );
 
-    const improvement = 
-      (bestTreatment.customMetrics[test.metrics.primaryMetric] - 
-       controlStats.customMetrics[test.metrics.primaryMetric]) /
+    const improvement =
+      (bestTreatment.customMetrics[test.metrics.primaryMetric] -
+        controlStats.customMetrics[test.metrics.primaryMetric]) /
       controlStats.customMetrics[test.metrics.primaryMetric] * 100;
 
     // Determine recommendation
@@ -424,8 +426,8 @@ export class AlgorithmABTesting extends EventEmitter {
       return false;
     }
 
-    if (test.targeting.includeUsers.length > 0 && 
-        !test.targeting.includeUsers.includes(context.userId)) {
+    if (test.targeting.includeUsers.length > 0 &&
+      !test.targeting.includeUsers.includes(context.userId)) {
       return false;
     }
 
@@ -437,13 +439,13 @@ export class AlgorithmABTesting extends EventEmitter {
     for (const rule of targeting.customRules) {
       const value = this.getNestedValue(context.metadata, rule.field);
       const matches = this.evaluateRule(rule, value);
-      
+
       if (rule.logic === 'and' && !matches) return false;
       if (rule.logic === 'or' && matches) return true;
     }
 
-    return targeting.customRules.length === 0 || 
-           targeting.customRules.every(rule => rule.logic === 'and');
+    return targeting.customRules.length === 0 ||
+      targeting.customRules.every(rule => rule.logic === 'and');
   }
 
   private evaluateRule(rule: TargetingRule, value: any): boolean {
@@ -461,7 +463,7 @@ export class AlgorithmABTesting extends EventEmitter {
     }
   }
 
-  private getUserVariant(test: ABTestDefinition, userId: string): string {
+  private assignUserVariant(test: ABTestDefinition, userId: string): string {
     // Check if user already has an assignment
     const existingAssignment = this.getUserVariant(test.id, userId);
     if (existingAssignment) {
@@ -499,27 +501,27 @@ export class AlgorithmABTesting extends EventEmitter {
     // This would integrate with the actual algorithm orchestrator
     // For now, simulate execution with variant configuration
     await new Promise(resolve => setTimeout(resolve, Math.random() * 1000 + 500));
-    
+
     // Simulate different performance based on variant
     const basePerformance = 0.9;
     const variantBoost = variant.isControl ? 0 : Math.random() * 0.1;
     const success = Math.random() < (basePerformance + variantBoost);
-    
+
     return {
       success,
-      data: { 
+      data: {
         result: `Processed by ${variant.algorithmId} v${variant.version}`,
         variant: variant.name,
         configuration: variant.configuration,
-        input 
+        input
       },
       executionTime: Math.random() * 1000 + 500,
       algorithmVersion: variant.version,
       confidence: success ? 0.8 + Math.random() * 0.2 : 0.3 + Math.random() * 0.3,
-      metadata: { 
+      metadata: {
         variantId: variant.id,
         isControl: variant.isControl,
-        configuration: variant.configuration 
+        configuration: variant.configuration
       },
     };
   }
@@ -540,10 +542,10 @@ export class AlgorithmABTesting extends EventEmitter {
     const totalExecutions = executions.length;
     const successfulExecutions = executions.filter(e => e.result.success).length;
     const failedExecutions = totalExecutions - successfulExecutions;
-    
+
     const averageExecutionTime = executions.reduce((sum, e) => sum + e.executionTime, 0) / totalExecutions || 0;
     const averageConfidence = executions.reduce((sum, e) => sum + (e.result.confidence || 0), 0) / totalExecutions || 0;
-    
+
     // Calculate custom metrics
     const customMetrics: Record<string, number> = {};
     for (const metric of [test.metrics.primaryMetric, ...test.metrics.secondaryMetrics]) {
@@ -595,7 +597,7 @@ export class AlgorithmABTesting extends EventEmitter {
     // In production, this would use proper statistical tests (t-test, chi-square, etc.)
     const sampleSize = executions.length;
     const minimumSampleSize = test.metrics.minimumSampleSize;
-    
+
     if (sampleSize < minimumSampleSize) {
       return 0.5; // Not enough data
     }
@@ -610,9 +612,9 @@ export class AlgorithmABTesting extends EventEmitter {
     const values = executions.map(e => this.calculateMetric([e], metric));
     const mean = values.reduce((sum, val) => sum + val, 0) / values.length || 0;
     const stdDev = Math.sqrt(values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length || 0);
-    
+
     const margin = 1.96 * stdDev / Math.sqrt(values.length || 1); // 95% confidence
-    
+
     return {
       lower: Math.max(0, mean - margin),
       upper: mean + margin,
@@ -676,41 +678,42 @@ export class AlgorithmABTesting extends EventEmitter {
 
   private startAnalysisEngine(): void {
     this.isRunning = true;
-    
+
     // Analyze tests every 5 minutes
     this.analysisInterval = setInterval(() => {
       this.analyzeActiveTests();
     }, 5 * 60 * 1000);
-    
+
     logger.info('A/B testing analysis engine started');
   }
 
   private analyzeActiveTests(): void {
     const activeTests = this.getActiveTests();
-    
+
     for (const test of activeTests) {
       try {
         const recommendation = this.getTestRecommendation(test.id);
-        
+
         // Check if test should be stopped
-        if (recommendation.recommendation === 'stop' || 
-            recommendation.recommendation === 'deploy') {
+        if (recommendation.recommendation === 'stop' ||
+          recommendation.recommendation === 'deploy') {
           this.stopTest(test.id, `Automatic stop: ${recommendation.reasoning}`);
         }
-        
+
         // Emit analysis event
         this.emit('testAnalyzed', {
           testId: test.id,
           recommendation,
           statistics: this.getTestStatistics(test.id),
         });
-        
-      } catch (error) {
+
+      } catch (error: any) {
         logger.error('Failed to analyze test', {
           testId: test.id,
           error: error.message,
         });
       }
+
     }
   }
 }

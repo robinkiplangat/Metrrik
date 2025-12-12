@@ -7,7 +7,7 @@ let db: Db;
 export async function connectDatabase(): Promise<void> {
   try {
     const uri = process.env.MONGODB_URI;
-    
+
     if (!uri) {
       throw new Error('MONGODB_URI environment variable is not set');
     }
@@ -24,13 +24,13 @@ export async function connectDatabase(): Promise<void> {
 
     // Test the connection
     await db.admin().ping();
-    
+
     logger.info('✅ Connected to MongoDB Atlas');
-    
+
     // Initialize collections and indexes
     await initializeCollections();
-    
-  } catch (error) {
+
+  } catch (error: any) {
     logger.error('❌ Failed to connect to MongoDB:', error);
     throw error;
   }
@@ -68,18 +68,18 @@ async function initializeCollections(): Promise<void> {
 
     for (const collectionName of collections) {
       const collection = db.collection(collectionName);
-      
+
       // Create collection if it doesn't exist (this will create the collection)
       // The _id index is created automatically by MongoDB
       await collection.createIndex({ createdAt: 1 }, { background: true });
-      
+
       logger.info(`✅ Collection '${collectionName}' initialized`);
     }
 
     // Create specific indexes
     await createIndexes();
-    
-  } catch (error) {
+
+  } catch (error: any) {
     logger.error('❌ Failed to initialize collections:', error);
     throw error;
   }
@@ -153,8 +153,8 @@ async function createIndexes(): Promise<void> {
     await db.collection('analysis_results').createIndex({ 'metadata.fileType': 1 });
 
     logger.info('✅ All database indexes created successfully');
-    
-  } catch (error) {
+
+  } catch (error: any) {
     logger.error('❌ Failed to create indexes:', error);
     throw error;
   }

@@ -86,7 +86,7 @@ class FileStorageService {
         default:
           throw new Error(`Unsupported storage type: ${this.config.type}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       logger.error('File upload error:', error);
       return {
         success: false,
@@ -113,7 +113,7 @@ class FileStorageService {
         default:
           throw new Error(`Unsupported storage type: ${this.config.type}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       logger.error('File download error:', error);
       return {
         success: false,
@@ -140,7 +140,7 @@ class FileStorageService {
         default:
           throw new Error(`Unsupported storage type: ${this.config.type}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       logger.error('File deletion error:', error);
       return false;
     }
@@ -165,7 +165,7 @@ class FileStorageService {
         default:
           return null;
       }
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Signed URL generation error:', error);
       return null;
     }
@@ -205,7 +205,7 @@ class FileStorageService {
         fs.unlinkSync(filePath);
       }
       return true;
-    } catch (error) {
+    } catch (error: any) {
       return false;
     }
   }
@@ -303,7 +303,7 @@ class FileStorageService {
 
       await this.s3Client.send(command);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       return false;
     }
   }
