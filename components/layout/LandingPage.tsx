@@ -61,13 +61,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     if (hasUsedFreeAnalysis && !isSignedIn && !isDeveloper) {
       alert('Please login to continue with more analyses. You\'ve used your free sample analysis.');
       return;
-    }
+      }
 
-    // Mark that user has used their free analysis (unless in developer mode)
-    if (!hasUsedFreeAnalysis && !isDeveloper) {
-      localStorage.setItem('qsci_free_analysis_used', 'true');
-      setHasUsedFreeAnalysis(true);
-    }
+      // Mark that user has used their free analysis (unless in developer mode)
+      if (!hasUsedFreeAnalysis && !isDeveloper) {
+        localStorage.setItem('qsci_free_analysis_used', 'true');
+        setHasUsedFreeAnalysis(true);
+      }
 
     setShowAnalysisModal(true);
   };
@@ -233,10 +233,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       {uploadedFile && (
         <UnifiedAnalysisModal
           isOpen={showAnalysisModal}
-          onClose={() => {
+        onClose={() => {
             setShowAnalysisModal(false);
-            setUploadedFile(null);
-          }}
+          setUploadedFile(null);
+        }}
           onSave={handleSaveDocument}
           file={uploadedFile}
           showDocumentPreview={true}

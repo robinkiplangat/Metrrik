@@ -34,7 +34,7 @@ const FilesView: React.FC<FilesViewProps> = ({ files, setFiles, setDocuments }) 
 
         for (let i = 0; i < selectedFiles.length; i++) {
             const file = selectedFiles[i];
-            const base64 = await fileToBas64(file);
+                const base64 = await fileToBas64(file);
             
             const newFile: UploadedFile = {
                 id: Date.now().toString() + i,
@@ -104,13 +104,13 @@ const FilesView: React.FC<FilesViewProps> = ({ files, setFiles, setDocuments }) 
                             onChange={handleFileChange}
                             className="hidden"
                         />
-                    </label>
+                </label>
                 </div>
             </div>
-
+            
             {/* Files Grid */}
             <div className="flex-1 overflow-y-auto">
-                {files.length === 0 ? (
+            {files.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-center py-12">
                         <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                             <Icon name="file" className="w-12 h-12 text-gray-400" />
@@ -130,8 +130,8 @@ const FilesView: React.FC<FilesViewProps> = ({ files, setFiles, setDocuments }) 
                                 className="hidden"
                             />
                         </label>
-                    </div>
-                ) : (
+                </div>
+            ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {files.map((file) => (
                             <div key={file.id} className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -185,13 +185,13 @@ const FilesView: React.FC<FilesViewProps> = ({ files, setFiles, setDocuments }) 
                                         >
                                             <Icon name="file" className="w-4 h-4" />
                                             <span>Edit Plan</span>
-                                        </button>
+                                    </button>
                                     </div>
                                 </div>
                             </div>
                         ))}
-                    </div>
-                )}
+                </div>
+            )}
             </div>
 
             {/* Unified Analysis Modal */}

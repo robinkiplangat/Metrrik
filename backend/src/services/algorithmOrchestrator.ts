@@ -190,7 +190,28 @@ export class AlgorithmOrchestrator extends EventEmitter {
       const queue = this.executionQueue.get(priority);
       if (queue && queue.length > 0) {
         const context = queue.shift()!;
-        this.executeImmediate(context, context.metadata.input, this.algorithms.get(context.metadata.algorithmId)!);
+        const algorithmId = context.metadata.algorithmId;
+
+        if (!algorithmId) {
+          logger.error('Queued execution missing algorithmId', {
+            executionId: context.id,
+            correlationId: context.correlationId,
+            metadata: context.metadata
+          });
+          continue; // Skip this execution and try the next one
+        }
+
+        const algorithm = this.algorithms.get(algorithmId);
+        if (!algorithm) {
+          logger.error('Queued execution algorithm not found', {
+            executionId: context.id,
+            correlationId: context.correlationId,
+            algorithmId
+          });
+          continue; // Skip this execution and try the next one
+        }
+
+        this.executeImmediate(context, context.metadata.input, algorithm);
         break;
       }
     }
@@ -276,7 +297,11 @@ export class AlgorithmOrchestrator extends EventEmitter {
         timeout: context.timeout || algorithm.timeout,
         retryCount: 0,
         maxRetries: context.maxRetries || algorithm.maxRetries,
-        metadata: { ...context.metadata, inputSize: JSON.stringify(input).length },
+        metadata: {
+          ...context.metadata,
+          inputSize: JSON.stringify(input).length,
+          algorithmId: algorithmId // Store algorithmId for queued executions
+        },
       };
 
       // Check circuit breaker
@@ -402,12 +427,28 @@ export class AlgorithmOrchestrator extends EventEmitter {
 
   // Queue execution for later processing
   private async queueExecution(context: AlgorithmContext, input: any): Promise<AlgorithmResult> {
+    // Validate required data before queuing
+    if (!context.metadata.algorithmId) {
+      logger.error('Cannot queue execution: missing algorithmId', {
+        executionId: context.id,
+        correlationId: context.correlationId,
+        metadata: context.metadata
+      });
+      throw new Error('Cannot queue execution: missing algorithmId');
+    }
+
     context.metadata.input = input;
-    context.metadata.algorithmId = context.metadata.algorithmId;
 
     const queue = this.executionQueue.get(context.priority);
     if (queue) {
       queue.push(context);
+      logger.info('Algorithm execution queued', {
+        algorithmId: context.metadata.algorithmId,
+        executionId: context.id,
+        correlationId: context.correlationId,
+        priority: context.priority,
+        queueLength: queue.length
+      });
     }
 
     return {
@@ -415,7 +456,11 @@ export class AlgorithmOrchestrator extends EventEmitter {
       error: 'Execution queued due to capacity limits',
       executionTime: 0,
       algorithmVersion: 'unknown',
-      metadata: { queued: true, queuePosition: queue?.length || 0 },
+      metadata: {
+        queued: true,
+        queuePosition: queue?.length || 0,
+        algorithmId: context.metadata.algorithmId
+      },
     };
   }
 
@@ -425,6 +470,17 @@ export class AlgorithmOrchestrator extends EventEmitter {
     input: any,
     algorithm: AlgorithmDefinition
   ): Promise<AlgorithmResult<T>> {
+    // Validate algorithm parameter
+    if (!algorithm || !algorithm.id) {
+      logger.error('executeImmediate called with invalid algorithm', {
+        executionId: context.id,
+        correlationId: context.correlationId,
+        algorithmId: context.metadata.algorithmId,
+        algorithm: algorithm ? { id: algorithm.id, hasId: !!algorithm.id } : 'undefined'
+      });
+      throw new Error(`Invalid algorithm parameter: ${algorithm}`);
+    }
+
     const startTime = performance.now();
     this.currentExecutions++;
     this.activeExecutions.set(context.id, context);
