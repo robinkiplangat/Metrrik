@@ -90,7 +90,7 @@ router.get('/:documentId', authenticateUser, asyncHandler(async (req: Authentica
 
   // Check if user has access to this document
   const project = await db.collection('projects').findOne({
-    _id: document.projectId,
+    _id: new ObjectId(document.projectId),
     userId: req.user!._id
   });
 
@@ -172,7 +172,7 @@ router.patch('/:documentId', authenticateUser, asyncHandler(async (req: Authenti
   }
 
   const project = await db.collection('projects').findOne({
-    _id: document.projectId,
+    _id: new ObjectId(document.projectId),
     userId: req.user!._id
   });
 
@@ -226,7 +226,7 @@ router.delete('/:documentId', authenticateUser, asyncHandler(async (req: Authent
   }
 
   const project = await db.collection('projects').findOne({
-    _id: document.projectId,
+    _id: new ObjectId(document.projectId),
     userId: req.user!._id
   });
 
@@ -262,7 +262,7 @@ router.get('/:documentId/versions', authenticateUser, asyncHandler(async (req: A
   }
 
   const project = await db.collection('projects').findOne({
-    _id: document.projectId,
+    _id: new ObjectId(document.projectId),
     userId: req.user!._id
   });
 

@@ -210,7 +210,7 @@ router.get('/download/:fileId', authenticateUser, asyncHandler(async (req: Authe
 
   // Check if user has access to this file
   const project = await db.collection('projects').findOne({
-    _id: file.projectId,
+    _id: new ObjectId(file.projectId),
     userId: req.user!._id
   });
 
@@ -256,7 +256,7 @@ router.patch('/:fileId', authenticateUser, [
   }
 
   const project = await db.collection('projects').findOne({
-    _id: file.projectId,
+    _id: new ObjectId(file.projectId),
     userId: req.user!._id
   });
 
@@ -303,7 +303,7 @@ router.delete('/:fileId', authenticateUser, asyncHandler(async (req: Authenticat
   }
 
   const project = await db.collection('projects').findOne({
-    _id: file.projectId,
+    _id: new ObjectId(file.projectId),
     userId: req.user!._id
   });
 

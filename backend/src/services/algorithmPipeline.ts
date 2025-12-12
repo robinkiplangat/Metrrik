@@ -1,3 +1,4 @@
+
 import { EventEmitter } from 'events';
 import { logger } from '../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
@@ -5,7 +6,8 @@ import { performance } from 'perf_hooks';
 import {
   AlgorithmContext,
   AlgorithmResult,
-  ExecutionStrategy
+  ExecutionStrategy,
+  AlgorithmPriority
 } from './algorithmOrchestrator';
 
 // Pipeline stage definition
@@ -392,7 +394,7 @@ export class AlgorithmPipeline extends EventEmitter {
       const result = await this.callAlgorithm(stage.algorithmId, stageInput, {
         ...context,
         timestamp: new Date(),
-        priority: 'normal',
+        priority: AlgorithmPriority.NORMAL,
         retryCount: 0,
         timeout: stage.timeout,
         maxRetries: stage.retryPolicy.maxRetries,
@@ -501,7 +503,7 @@ export class AlgorithmPipeline extends EventEmitter {
 
     return {
       success: Math.random() > 0.1, // 90% success rate
-      data: { result: `Processed by ${algorithmId}`, input },
+      data: { result: `Processed by ${algorithmId} `, input },
       executionTime: Math.random() * 1000 + 500,
       algorithmVersion: '1.0.0',
       metadata: { algorithmId },
@@ -629,7 +631,7 @@ export class AlgorithmPipeline extends EventEmitter {
     for (const stage of definition.stages) {
       for (const dependency of stage.dependencies) {
         if (!stageIds.has(dependency)) {
-          throw new Error(`Stage ${stage.id} has invalid dependency: ${dependency}`);
+          throw new Error(`Stage ${stage.id} has invalid dependency: ${dependency} `);
         }
       }
     }
@@ -662,7 +664,7 @@ export class AlgorithmPipeline extends EventEmitter {
 
     for (const stage of stages) {
       if (hasCycle(stage.id)) {
-        throw new Error(`Circular dependency detected involving stage: ${stage.id}`);
+        throw new Error(`Circular dependency detected involving stage: ${stage.id} `);
       }
     }
   }
