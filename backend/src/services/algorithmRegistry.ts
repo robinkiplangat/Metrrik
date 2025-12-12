@@ -1,10 +1,10 @@
 import { logger } from '../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
-import { 
-  AlgorithmDefinition, 
-  AlgorithmCategory, 
+import {
+  AlgorithmDefinition,
+  AlgorithmCategory,
   AlgorithmPriority,
-  AlgorithmMetrics 
+  AlgorithmMetrics
 } from './algorithmOrchestrator';
 
 // Algorithm version information
@@ -147,7 +147,7 @@ export class AlgorithmRegistry {
         createdBy: version.createdBy,
       });
 
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to register algorithm', {
         algorithmId: definition.id,
         version: version.version,
@@ -183,9 +183,9 @@ export class AlgorithmRegistry {
     const versions = this.versions.get(algorithmId);
     if (!versions) return null;
 
-    return versions.find(v => v.isActive && v.isDefault) || 
-           versions.find(v => v.isActive) || 
-           null;
+    return versions.find(v => v.isActive && v.isDefault) ||
+      versions.find(v => v.isActive) ||
+      null;
   }
 
   // Deploy algorithm to environment
@@ -249,7 +249,7 @@ export class AlgorithmRegistry {
 
       return deployment;
 
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Algorithm deployment failed', {
         algorithmId,
         version,
@@ -319,7 +319,7 @@ export class AlgorithmRegistry {
 
       return rollbackDeployment;
 
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Algorithm rollback failed', {
         algorithmId,
         environment,
@@ -335,8 +335,8 @@ export class AlgorithmRegistry {
     const deployments = this.deployments.get(algorithmId);
     if (!deployments) return null;
 
-    return deployments.find(d => 
-      d.environment === environment && 
+    return deployments.find(d =>
+      d.environment === environment &&
       (d.status === 'active' || d.status === 'deploying')
     ) || null;
   }
@@ -369,7 +369,7 @@ export class AlgorithmRegistry {
     if (!deployment) return;
 
     deployment.healthChecks.push(healthCheck);
-    
+
     // Keep only last 100 health checks
     if (deployment.healthChecks.length > 100) {
       deployment.healthChecks = deployment.healthChecks.slice(-100);
@@ -441,7 +441,7 @@ export class AlgorithmRegistry {
 
     const algorithmsByCategory: Record<string, number> = {};
     Array.from(this.algorithms.values()).forEach(algorithm => {
-      algorithmsByCategory[algorithm.category] = 
+      algorithmsByCategory[algorithm.category] =
         (algorithmsByCategory[algorithm.category] || 0) + 1;
     });
 

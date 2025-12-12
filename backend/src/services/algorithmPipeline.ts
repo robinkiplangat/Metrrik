@@ -2,10 +2,10 @@ import { EventEmitter } from 'events';
 import { logger } from '../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
 import { performance } from 'perf_hooks';
-import { 
-  AlgorithmContext, 
-  AlgorithmResult, 
-  ExecutionStrategy 
+import {
+  AlgorithmContext,
+  AlgorithmResult,
+  ExecutionStrategy
 } from './algorithmOrchestrator';
 
 // Pipeline stage definition
@@ -159,7 +159,7 @@ export class AlgorithmPipeline extends EventEmitter {
       });
 
       this.emit('pipelineRegistered', definition);
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to register pipeline', {
         pipelineId: definition.id,
         error: error.message,
@@ -212,9 +212,9 @@ export class AlgorithmPipeline extends EventEmitter {
       // Execute immediately
       return this.executeImmediate(executionContext, pipeline);
 
-    } catch (error) {
+    } catch (error: any) {
       const executionTime = performance.now() - startTime;
-      
+
       logger.error('Pipeline execution failed', {
         pipelineId,
         executionId,
@@ -309,9 +309,9 @@ export class AlgorithmPipeline extends EventEmitter {
         metadata: { executionId: context.id, correlationId: context.correlationId },
       };
 
-    } catch (error) {
+    } catch (error: any) {
       const executionTime = performance.now() - startTime;
-      
+
       // Update metrics
       this.updatePipelineMetrics(pipeline.id, executionTime, false);
 
@@ -333,7 +333,7 @@ export class AlgorithmPipeline extends EventEmitter {
 
     while (stageQueue.length > 0) {
       // Find stages that can be executed (dependencies satisfied)
-      const executableStages = stageQueue.filter(stage => 
+      const executableStages = stageQueue.filter(stage =>
         stage.dependencies.every(dep => executedStages.has(dep))
       );
 
@@ -342,7 +342,7 @@ export class AlgorithmPipeline extends EventEmitter {
       }
 
       // Execute stages (parallel if configured)
-      const stagePromises = executableStages.map(stage => 
+      const stagePromises = executableStages.map(stage =>
         this.executeStage(stage, currentData, context)
       );
 
@@ -391,6 +391,9 @@ export class AlgorithmPipeline extends EventEmitter {
       // Execute algorithm (this would call the actual algorithm orchestrator)
       const result = await this.callAlgorithm(stage.algorithmId, stageInput, {
         ...context,
+        timestamp: new Date(),
+        priority: 'normal',
+        retryCount: 0,
         timeout: stage.timeout,
         maxRetries: stage.retryPolicy.maxRetries,
       });
@@ -409,9 +412,9 @@ export class AlgorithmPipeline extends EventEmitter {
         metadata: { ...result.metadata, stageId: stage.id },
       };
 
-    } catch (error) {
+    } catch (error: any) {
       const executionTime = performance.now() - startTime;
-      
+
       const result: AlgorithmResult = {
         success: false,
         error: error.message,
@@ -472,7 +475,7 @@ export class AlgorithmPipeline extends EventEmitter {
   ): boolean {
     return conditions.every(condition => {
       const value = this.getNestedValue(input, condition.field);
-      
+
       switch (condition.operator) {
         case 'eq': return value === condition.value;
         case 'ne': return value !== condition.value;
@@ -495,7 +498,7 @@ export class AlgorithmPipeline extends EventEmitter {
     // This would integrate with the actual algorithm orchestrator
     // For now, simulate algorithm execution
     await new Promise(resolve => setTimeout(resolve, Math.random() * 1000 + 500));
-    
+
     return {
       success: Math.random() > 0.1, // 90% success rate
       data: { result: `Processed by ${algorithmId}`, input },
@@ -535,8 +538,8 @@ export class AlgorithmPipeline extends EventEmitter {
       metrics.failedExecutions++;
     }
 
-    metrics.averageExecutionTime = 
-      (metrics.averageExecutionTime * (metrics.totalExecutions - 1) + executionTime) / 
+    metrics.averageExecutionTime =
+      (metrics.averageExecutionTime * (metrics.totalExecutions - 1) + executionTime) /
       metrics.totalExecutions;
 
     metrics.lastExecutionTime = new Date();
@@ -563,13 +566,13 @@ export class AlgorithmPipeline extends EventEmitter {
     }
 
     stageMetrics.totalExecutions++;
-    stageMetrics.averageExecutionTime = 
-      (stageMetrics.averageExecutionTime * (stageMetrics.totalExecutions - 1) + executionTime) / 
+    stageMetrics.averageExecutionTime =
+      (stageMetrics.averageExecutionTime * (stageMetrics.totalExecutions - 1) + executionTime) /
       stageMetrics.totalExecutions;
 
     if (!success) {
-      stageMetrics.errorRate = 
-        (stageMetrics.errorRate * (stageMetrics.totalExecutions - 1) + 1) / 
+      stageMetrics.errorRate =
+        (stageMetrics.errorRate * (stageMetrics.totalExecutions - 1) + 1) /
         stageMetrics.totalExecutions;
     }
   }
@@ -591,10 +594,10 @@ export class AlgorithmPipeline extends EventEmitter {
 
   private startPipelineEngine(): void {
     this.isRunning = true;
-    
+
     // Process queue every 100ms
     setInterval(() => this.processQueue(), 100);
-    
+
     logger.info('Algorithm pipeline engine started');
   }
 

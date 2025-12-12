@@ -12,6 +12,8 @@ export interface FileStorageConfig {
     region: string;
     accessKeyId: string;
     secretAccessKey: string;
+    analysisBucket?: string;
+    tempBucket?: string;
   };
   gcsConfig?: {
     bucket: string;
@@ -46,7 +48,7 @@ class FileStorageService {
 
   constructor(config: FileStorageConfig) {
     this.config = config;
-    
+
     if (config.type === 's3' && config.s3Config) {
       this.s3Client = new S3Client({
         region: config.s3Config.region,
@@ -62,24 +64,25 @@ class FileStorageService {
     file: Express.Multer.File,
     projectId: string,
     userId: string,
-    metadata?: Record<string, any>
+    metadata?: Record<string, any>,
+    fileType: 'general' | 'analysis' | 'temp' = 'general'
   ): Promise<UploadResult> {
     try {
       const fileName = `${projectId}/${userId}/${Date.now()}-${file.originalname}`;
-      
+
       switch (this.config.type) {
         case 'local':
           return await this.uploadToLocal(file, fileName);
-        
+
         case 's3':
-          return await this.uploadToS3(file, fileName, metadata);
-        
+          return await this.uploadToS3(file, fileName, metadata, fileType);
+
         case 'gcs':
           return await this.uploadToGCS(file, fileName, metadata);
-        
+
         case 'azure':
           return await this.uploadToAzure(file, fileName, metadata);
-        
+
         default:
           throw new Error(`Unsupported storage type: ${this.config.type}`);
       }
@@ -97,16 +100,16 @@ class FileStorageService {
       switch (this.config.type) {
         case 'local':
           return await this.downloadFromLocal(filePath);
-        
+
         case 's3':
           return await this.downloadFromS3(filePath);
-        
+
         case 'gcs':
           return await this.downloadFromGCS(filePath);
-        
+
         case 'azure':
           return await this.downloadFromAzure(filePath);
-        
+
         default:
           throw new Error(`Unsupported storage type: ${this.config.type}`);
       }
@@ -124,16 +127,16 @@ class FileStorageService {
       switch (this.config.type) {
         case 'local':
           return await this.deleteFromLocal(filePath);
-        
+
         case 's3':
           return await this.deleteFromS3(filePath);
-        
+
         case 'gcs':
           return await this.deleteFromGCS(filePath);
-        
+
         case 'azure':
           return await this.deleteFromAzure(filePath);
-        
+
         default:
           throw new Error(`Unsupported storage type: ${this.config.type}`);
       }
@@ -148,17 +151,17 @@ class FileStorageService {
       switch (this.config.type) {
         case 's3':
           return await this.getS3SignedUrl(filePath, expiresIn);
-        
+
         case 'gcs':
           return await this.getGCSSignedUrl(filePath, expiresIn);
-        
+
         case 'azure':
           return await this.getAzureSignedUrl(filePath, expiresIn);
-        
+
         case 'local':
           // For local files, return the direct path
           return filePath;
-        
+
         default:
           return null;
       }
@@ -173,13 +176,13 @@ class FileStorageService {
     const uploadDir = this.config.localPath || path.join(process.cwd(), 'uploads');
     const fullPath = path.join(uploadDir, fileName);
     const dir = path.dirname(fullPath);
-    
+
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    
+
     fs.copyFileSync(file.path, fullPath);
-    
+
     return {
       success: true,
       filePath: fullPath,
@@ -191,7 +194,7 @@ class FileStorageService {
     if (!fs.existsSync(filePath)) {
       return { success: false, error: 'File not found' };
     }
-    
+
     const stream = fs.createReadStream(filePath);
     return { success: true, stream };
   }
@@ -211,30 +214,62 @@ class FileStorageService {
   private async uploadToS3(
     file: Express.Multer.File,
     fileName: string,
-    metadata?: Record<string, any>
+    metadata?: Record<string, any>,
+    fileType: 'general' | 'analysis' | 'temp' = 'general'
   ): Promise<UploadResult> {
     if (!this.s3Client || !this.config.s3Config) {
       throw new Error('S3 client not configured');
     }
 
+    // Determine bucket and prefix based on fileType
+    let targetBucket = this.config.s3Config.bucket;
+    let targetPrefix = '';
+
+    if (fileType === 'analysis' && this.config.s3Config.analysisBucket) {
+      const { bucket, prefix } = this.parseBucketConfig(this.config.s3Config.analysisBucket);
+      targetBucket = bucket;
+      targetPrefix = prefix;
+    } else if (fileType === 'temp' && this.config.s3Config.tempBucket) {
+      const { bucket, prefix } = this.parseBucketConfig(this.config.s3Config.tempBucket);
+      targetBucket = bucket;
+      targetPrefix = prefix;
+    } else {
+      // Fallback for general bucket if it has a prefix (though less likely for root bucket)
+      const { bucket, prefix } = this.parseBucketConfig(targetBucket);
+      targetBucket = bucket;
+      targetPrefix = prefix;
+    }
+
+    // Construct the full key with prefix if it exists
+    // Ensure no double slashes if prefix and fileName interacting, though fileName currently is "proj/user/timestamp-name"
+    // If prefix is "analysis-files", key becomes "analysis-files/proj/user/timestamp-name"
+    const key = targetPrefix ? `${targetPrefix}/${fileName}` : fileName;
+
     const command = new PutObjectCommand({
-      Bucket: this.config.s3Config.bucket,
-      Key: fileName,
+      Bucket: targetBucket,
+      Key: key,
       Body: fs.createReadStream(file.path),
       ContentType: file.mimetype,
       Metadata: metadata || {},
     });
 
     await this.s3Client.send(command);
-    
-    const url = `https://${this.config.s3Config.bucket}.s3.${this.config.s3Config.region}.amazonaws.com/${fileName}`;
-    
+
+    const url = `https://${targetBucket}.s3.${this.config.s3Config.region}.amazonaws.com/${key}`;
+
     return {
       success: true,
-      filePath: fileName,
+      filePath: key,
       url,
-      key: fileName
+      key: key
     };
+  }
+
+  private parseBucketConfig(configString: string): { bucket: string; prefix: string } {
+    const parts = configString.split('/');
+    const bucket = parts[0];
+    const prefix = parts.slice(1).join('/');
+    return { bucket, prefix };
   }
 
   private async downloadFromS3(filePath: string): Promise<DownloadResult> {
@@ -248,7 +283,7 @@ class FileStorageService {
     });
 
     const response = await this.s3Client.send(command);
-    
+
     return {
       success: true,
       stream: response.Body as NodeJS.ReadableStream
@@ -325,7 +360,7 @@ class FileStorageService {
 // Factory function to create storage service
 export function createFileStorageService(): FileStorageService {
   const storageType = (process.env.FILE_STORAGE_TYPE || 'local') as 'local' | 's3' | 'gcs' | 'azure';
-  
+
   const config: FileStorageConfig = {
     type: storageType,
     localPath: process.env.UPLOAD_DIR || 'uploads',
@@ -334,6 +369,8 @@ export function createFileStorageService(): FileStorageService {
       region: process.env.AWS_S3_REGION || 'us-east-1',
       accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+      analysisBucket: process.env.AWS_S3_ANALYSIS_BUCKET,
+      tempBucket: process.env.AWS_S3_TEMP_BUCKET,
     } : undefined,
   };
 

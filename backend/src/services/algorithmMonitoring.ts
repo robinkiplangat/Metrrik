@@ -1,10 +1,10 @@
 import { EventEmitter } from 'events';
 import { logger } from '../utils/logger';
 import { performance } from 'perf_hooks';
-import { 
-  AlgorithmMetrics, 
-  AlgorithmContext, 
-  AlgorithmResult 
+import {
+  AlgorithmMetrics,
+  AlgorithmContext,
+  AlgorithmResult
 } from './algorithmOrchestrator';
 
 // Real-time metrics
@@ -90,7 +90,7 @@ export class AlgorithmMonitoring extends EventEmitter {
     if (this.isMonitoring) return;
 
     this.isMonitoring = true;
-    
+
     // Collect metrics every 10 seconds
     this.monitoringInterval = setInterval(() => {
       this.collectSystemMetrics();
@@ -104,7 +104,7 @@ export class AlgorithmMonitoring extends EventEmitter {
     if (!this.isMonitoring) return;
 
     this.isMonitoring = false;
-    
+
     if (this.monitoringInterval) {
       clearInterval(this.monitoringInterval);
       this.monitoringInterval = null;
@@ -136,7 +136,7 @@ export class AlgorithmMonitoring extends EventEmitter {
         timestamp: new Date(),
       });
 
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to record algorithm execution', {
         algorithmId,
         error: error.message,
@@ -148,7 +148,7 @@ export class AlgorithmMonitoring extends EventEmitter {
   getRealTimeMetrics(algorithmId: string, timeRange: number = 3600000): RealTimeMetrics[] {
     const algorithmMetrics = this.metrics.get(algorithmId) || [];
     const cutoffTime = new Date(Date.now() - timeRange);
-    
+
     return algorithmMetrics.filter(metric => metric.timestamp >= cutoffTime);
   }
 
@@ -205,12 +205,12 @@ export class AlgorithmMonitoring extends EventEmitter {
   // Set performance threshold
   setPerformanceThreshold(threshold: PerformanceThreshold): void {
     const algorithmThresholds = this.thresholds.get(threshold.algorithmId) || [];
-    
+
     // Remove existing threshold for same metric
     const filteredThresholds = algorithmThresholds.filter(
       t => t.metric !== threshold.metric
     );
-    
+
     filteredThresholds.push(threshold);
     this.thresholds.set(threshold.algorithmId, filteredThresholds);
 
@@ -232,11 +232,11 @@ export class AlgorithmMonitoring extends EventEmitter {
   resolveAlert(algorithmId: string, alertId: string): void {
     const algorithmAlerts = this.alerts.get(algorithmId) || [];
     const alert = algorithmAlerts.find(a => a.id === alertId);
-    
+
     if (alert) {
       alert.resolved = true;
       alert.resolvedAt = new Date();
-      
+
       logger.info('Performance alert resolved', {
         algorithmId,
         alertId,
@@ -277,8 +277,8 @@ export class AlgorithmMonitoring extends EventEmitter {
       healthScores.push(dashboardData.healthScore);
     });
 
-    const systemHealthScore = healthScores.length > 0 
-      ? healthScores.reduce((sum, score) => sum + score, 0) / healthScores.length 
+    const systemHealthScore = healthScores.length > 0
+      ? healthScores.reduce((sum, score) => sum + score, 0) / healthScores.length
       : 100;
 
     return {
@@ -299,9 +299,9 @@ export class AlgorithmMonitoring extends EventEmitter {
   ): void {
     const now = new Date();
     const algorithmMetrics = this.metrics.get(algorithmId) || [];
-    
+
     // Get or create current metrics entry
-    let currentMetrics = algorithmMetrics.find(m => 
+    let currentMetrics = algorithmMetrics.find(m =>
       Math.abs(m.timestamp.getTime() - now.getTime()) < 10000 // Within 10 seconds
     );
 
@@ -323,17 +323,17 @@ export class AlgorithmMonitoring extends EventEmitter {
 
     // Update metrics
     currentMetrics.throughput += 1;
-    currentMetrics.averageResponseTime = 
+    currentMetrics.averageResponseTime =
       (currentMetrics.averageResponseTime + executionTime) / 2;
-    
+
     if (!result.success) {
-      currentMetrics.errorRate = 
+      currentMetrics.errorRate =
         (currentMetrics.errorRate + 1) / currentMetrics.throughput;
     }
 
     // Clean up old metrics
     this.cleanupOldMetrics(algorithmId, algorithmMetrics);
-    
+
     this.metrics.set(algorithmId, algorithmMetrics);
   }
 
@@ -343,7 +343,7 @@ export class AlgorithmMonitoring extends EventEmitter {
     executionTime: number
   ): void {
     const thresholds = this.thresholds.get(algorithmId) || [];
-    
+
     thresholds.forEach(threshold => {
       if (!threshold.enabled) return;
 
@@ -441,7 +441,7 @@ export class AlgorithmMonitoring extends EventEmitter {
   private cleanupOldMetrics(algorithmId: string, metrics: RealTimeMetrics[]): void {
     const cutoffTime = new Date(Date.now() - (this.metricsRetentionDays * 24 * 60 * 60 * 1000));
     const filteredMetrics = metrics.filter(m => m.timestamp >= cutoffTime);
-    
+
     // Keep only the most recent metrics if we exceed the limit
     if (filteredMetrics.length > this.maxMetricsPerAlgorithm) {
       const sortedMetrics = filteredMetrics.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
@@ -463,7 +463,7 @@ export class AlgorithmMonitoring extends EventEmitter {
 
   private calculatePercentile(values: number[], percentile: number): number {
     if (values.length === 0) return 0;
-    
+
     const sorted = values.sort((a, b) => a - b);
     const index = Math.ceil((percentile / 100) * sorted.length) - 1;
     return sorted[Math.max(0, index)];
@@ -478,7 +478,7 @@ export class AlgorithmMonitoring extends EventEmitter {
       if (!buckets[bucketTime]) {
         buckets[bucketTime] = { executions: 0, responseTime: 0, errors: 0 };
       }
-      
+
       buckets[bucketTime].executions += metric.throughput;
       buckets[bucketTime].responseTime += metric.averageResponseTime * metric.throughput;
       buckets[bucketTime].errors += metric.throughput * metric.errorRate;

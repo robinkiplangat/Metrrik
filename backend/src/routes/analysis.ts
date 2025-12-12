@@ -10,8 +10,10 @@ import { authenticateUser, AuthenticatedRequest, optionalAuth } from '../middlew
 import { logger } from '../utils/logger';
 import axios from 'axios';
 import { analyzeFloorPlan as geminiAnalyzeFloorPlan } from '../services/geminiService';
+import { createFileStorageService } from '../services/fileStorageService';
 
 const router = Router();
+const fileStorageService = createFileStorageService();
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -126,19 +128,49 @@ router.post('/analyze', optionalAuth, upload.single('floorPlan'), asyncHandler(a
   try {
     logger.info(`Starting floor plan analysis for: ${req.file.originalname}`);
     logger.info(`Project: ${projectName}, Type: ${projectType}`);
-    
+
     // Perform AI-powered analysis
     const analysisResult = await performFloorPlanAnalysis(req.file, projectName, projectType);
-    
+
     logger.info(`Analysis completed successfully for: ${req.file.originalname}`);
 
     // Save analysis result to database (optional - for tracking)
     const db = getDatabase();
-    
+
+    // Upload to S3 if configured
+    let fileUrl = req.file.path; // Default to local path
+    try {
+      const userId = req.user ? req.user._id : 'anonymous';
+      // Use 'analysis' fileType to trigger the specific bucket/prefix logic
+      const uploadResult = await fileStorageService.uploadFile(
+        req.file,
+        projectName.replace(/[^a-zA-Z0-9]/g, '_'), // Sanitize project name for path
+        userId,
+        {},
+        'analysis'
+      );
+
+      if (uploadResult.success && uploadResult.url) {
+        fileUrl = uploadResult.url;
+        logger.info(`File uploaded to storage: ${fileUrl}`);
+
+        // Clean up local staging file
+        /* 
+           Uncomment to delete local file after S3 upload. 
+           Kept commented for now to persist local copy as backup/cache if needed 
+           or if user wants to see it in 'uploads' folder for debugging.
+        */
+        // if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      }
+    } catch (uploadError) {
+      logger.error('Failed to upload file to storage, falling back to local:', uploadError);
+      // Continue with local path
+    }
+
     // Create analysis record object with userId if authenticated
     const analysisRecord: any = {
       fileName: req.file.originalname,
-      filePath: req.file.path,
+      filePath: fileUrl,
       projectName: analysisResult.projectName,
       analysisResult,
       createdAt: new Date(),
@@ -167,12 +199,12 @@ router.post('/analyze', optionalAuth, upload.single('floorPlan'), asyncHandler(a
 
   } catch (error) {
     logger.error('Analysis error:', error);
-    
+
     // Clean up uploaded file on error
     if (fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
-    
+
     throw new CustomError('Failed to analyze floor plan', 500);
   }
 }));
@@ -211,7 +243,7 @@ router.post('/analyze', optionalAuth, upload.single('floorPlan'), asyncHandler(a
  */
 router.get('/history', authenticateUser, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const db = getDatabase();
-  
+
   // Ensure we only fetch analyses for the authenticated user
   const analyses = await db.collection('analysis_results')
     .find({ userId: req.user?._id })
@@ -238,25 +270,25 @@ async function performFloorPlanAnalysis(file: Express.Multer.File, projectName: 
     // Convert file to base64 for AI analysis
     const fileBuffer = fs.readFileSync(file.path);
     const base64Data = fileBuffer.toString('base64');
-    
+
     logger.info(`Starting AI analysis for file: ${file.originalname}`);
-    
+
     // Use the existing geminiService for analysis
     const aiResponseString = await geminiAnalyzeFloorPlan(base64Data, file.mimetype);
-    
+
     // Check if the response contains an error
     if (aiResponseString.includes('"error"')) {
       const errorResponse = JSON.parse(aiResponseString);
       logger.error('AI analysis returned error:', errorResponse.error);
       throw new Error(errorResponse.error.message || 'AI analysis failed');
     }
-    
+
     // Parse the AI response
     const aiResponse = JSON.parse(aiResponseString);
-    
+
     // Convert AI response to our analysis result format
     return convertAIResponseToAnalysisResult(aiResponse, projectName, file);
-    
+
   } catch (error) {
     logger.error('AI analysis failed, falling back to simulation:', error);
     return performSimulatedAnalysis(file, projectName, projectType);
@@ -267,11 +299,11 @@ async function performFloorPlanAnalysis(file: Express.Multer.File, projectName: 
 function convertAIResponseToAnalysisResult(aiResponse: any, projectName: string, file: Express.Multer.File): AnalysisResult {
   const summary = aiResponse.summary;
   const bqItems = aiResponse.billOfQuantities || [];
-  
+
   // Group items by category for breakdown
   const categoryMap = new Map();
   let totalCost = 0;
-  
+
   bqItems.forEach((item: any) => {
     const category = item.category || 'General';
     if (!categoryMap.has(category)) {
@@ -281,13 +313,13 @@ function convertAIResponseToAnalysisResult(aiResponse: any, projectName: string,
         items: []
       });
     }
-    
+
     const categoryData = categoryMap.get(category);
     categoryData.amount += item.totalCostKES || 0;
     categoryData.items.push(item);
     totalCost += item.totalCostKES || 0;
   });
-  
+
   // Convert to breakdown format
   const breakdown = Array.from(categoryMap.values()).map(cat => ({
     category: cat.category,
@@ -295,7 +327,7 @@ function convertAIResponseToAnalysisResult(aiResponse: any, projectName: string,
     percentage: `${((cat.amount / totalCost) * 100).toFixed(1)}%`,
     description: `${cat.items.length} items in this category`
   }));
-  
+
   return {
     projectName: projectName || `Analysis - ${new Date().toLocaleDateString()}`,
     totalArea: summary.totalArea || 'N/A',
@@ -315,18 +347,18 @@ function convertAIResponseToAnalysisResult(aiResponse: any, projectName: string,
 async function performSimulatedAnalysis(file: Express.Multer.File, projectName: string, projectType: string): Promise<AnalysisResult> {
   const fileSize = file.size;
   const isLargeFile = fileSize > 5 * 1024 * 1024; // 5MB
-  
+
   const baseArea = isLargeFile ? 200 : 120; // sqm
   const areaVariation = Math.random() * 50; // ±25 sqm variation
   const totalArea = Math.round(baseArea + areaVariation);
-  
+
   const baseCostPerSqm = projectType === 'commercial' ? 35000 : 28000;
   const costVariation = Math.random() * 5000; // ±2,500 variation
   const costPerSqm = Math.round(baseCostPerSqm + costVariation);
-  
+
   const totalCost = totalArea * costPerSqm;
   const breakdown = generateCostBreakdown(totalCost, projectType);
-  
+
   return {
     projectName: projectName || `Analysis - ${new Date().toLocaleDateString()}`,
     totalArea: `${totalArea} sqm`,
@@ -382,7 +414,7 @@ function generateCostBreakdown(totalCost: number, projectType: string): Array<{
   };
 
   const breakdown = breakdowns[projectType as keyof typeof breakdowns] || breakdowns.residential;
-  
+
   return breakdown.map(item => {
     const amount = Math.round(totalCost * (item.percentage / 100));
     return {
