@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getDatabase } from '../config/database';
 import { CustomError } from './errorHandler';
 import { logger } from '../utils/logger';
-import { createClerkClient } from '@clerk/backend';
+import { createClerkClient, verifyToken } from '@clerk/backend';
 
 // Initialize Clerk client
 const clerkClient = createClerkClient({
@@ -38,14 +38,18 @@ export const authenticateUser = async (
       throw new CustomError('Invalid token', 401);
     }
 
-    // Verify the session token with Clerk
+    // Verify the JWT token with Clerk using verifyToken
     let clerkUserId: string;
     try {
-      const session = await clerkClient.sessions.verifySession(token, token);
-      if (!session || !session.userId) {
-        throw new CustomError('Invalid token', 401);
+      // verifyToken returns the decoded payload, 'sub' is the user ID
+      const verified = await verifyToken(token, {
+        secretKey: process.env.CLERK_SECRET_KEY
+      });
+
+      if (!verified.sub) {
+        throw new CustomError('Invalid token: missing subject', 401);
       }
-      clerkUserId = session.userId;
+      clerkUserId = verified.sub;
     } catch (error: any) {
       logger.error('Token verification failed:', error);
       throw new CustomError('Invalid or expired token', 401);

@@ -1,6 +1,6 @@
 import React from 'react';
 
-type IconName = 'dashboard' | 'folder' | 'chat' | 'file' | 'settings' | 'user' | 'upload' | 'arrow-left' | 'plus' | 'send' | 'download' | 'document' | 'close' | 'info' | 'chevron-up' | 'chevron-down' | 'lightbulb' | 'search';
+type IconName = 'dashboard' | 'folder' | 'chat' | 'file' | 'settings' | 'user' | 'upload' | 'arrow-left' | 'plus' | 'send' | 'download' | 'document' | 'close' | 'info' | 'chevron-up' | 'chevron-down' | 'lightbulb' | 'search' | 'edit';
 
 interface IconProps {
   name: IconName;
@@ -27,6 +27,7 @@ const ICONS: Record<IconName, React.ReactElement> = {
   'chevron-down': <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />,
   lightbulb: <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a6.048 6.048 0 01-1.5 0m1.5-2.383a6.048 6.048 0 00-1.5 0m0 0V18a2.25 2.25 0 11-4.5 0v-5.25m0 0a6.01 6.01 0 011.5-.189m-1.5.189a6.01 6.01 0 00-1.5.189m0 0V18a2.25 2.25 0 104.5 0v-5.25m0 0a6.01 6.01 0 00-1.5-.189m1.5.189a6.01 6.01 0 01-1.5.189" />,
   search: <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />,
+  edit: <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />,
 };
 
 const Icon: React.FC<IconProps> = ({ name, className = 'w-6 h-6' }) => {

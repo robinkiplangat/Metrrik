@@ -133,13 +133,15 @@ export class ApiService {
     });
   }
 
-  static async delete<T = any>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<ApiResponse<T>> {
+  static async delete<T = any>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, { ...options, method: 'DELETE' });
+  }
+
+  static async patch<T = any>(endpoint: string, data: any, options: RequestInit = {}): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
-      method: 'DELETE',
       ...options,
+      method: 'PATCH',
+      body: JSON.stringify(data),
     });
   }
 }
@@ -171,6 +173,10 @@ export const projectsApi = {
 
   async createProject(data: { name: string; type: string; description?: string }) {
     return ApiService.post('/api/projects', data);
+  },
+
+  async updateProject(id: string, data: { name?: string; description?: string; status?: string }) {
+    return ApiService.patch(`/api/projects/${id}`, data);
   }
 };
 

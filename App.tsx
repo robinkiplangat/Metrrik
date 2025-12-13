@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import type { Project, ChatMessage } from './services/shared/types';
 import Sidebar from './components/layout/Sidebar';
@@ -11,7 +10,7 @@ import LandingPage from './components/layout/LandingPage';
 import ChatBubble from './components/ui/ChatBubble';
 import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useAuth } from '@clerk/clerk-react';
 import PendingSaveHandler from './components/dashboard/PendingSaveHandler';
-import { ApiService } from './services/client/apiService';
+import { ApiService, projectsApi } from './services/client/apiService';
 // Database operations are now handled by the backend API
 
 // Mock data for initial projects
@@ -88,6 +87,34 @@ const App: React.FC = () => {
     }
   };
 
+  const handleRenameProject = async (projectId: string, newName: string) => {
+    try {
+      // If it's a local draft (starts with proj-), just update local state
+      // Real database IDs are MongoDB ObjectIds (24 hex chars)
+      const isLocalDraft = projectId.startsWith('proj-');
+
+      if (!isLocalDraft) {
+        await projectsApi.updateProject(projectId, { name: newName });
+      } else {
+        console.log('Renaming local draft, skipping API call');
+      }
+
+      // Update local state
+      setProjects(prev => prev.map(p =>
+        (p.id === projectId || (p as any)._id === projectId)
+          ? { ...p, name: newName }
+          : p
+      ));
+
+      if (selectedProject && (selectedProject.id === projectId || (selectedProject as any)._id === projectId)) {
+        setSelectedProject({ ...selectedProject, name: newName });
+      }
+    } catch (error) {
+      console.error('Failed to rename project:', error);
+      // Ideally show a toast or alert
+    }
+  };
+
   /* ... inside App component ... */
   const renderContent = () => {
     if (selectedProject) {
@@ -107,16 +134,20 @@ const App: React.FC = () => {
 
   const fetchProjects = async () => {
     try {
-      const { projectsApi } = await import('./services/client/apiService');
+      // const { projectsApi } = await import('./services/client/apiService'); // projectsApi is now imported directly
       const response = await projectsApi.getProjects();
-      if (response.success) {
-        setProjects(response.data.projects.map((p: any) => ({
-          id: p._id,
-          name: p.name,
-          client: p.client || 'Unknown Client', // Fallback as backend model differs slightly
-          lastModified: p.updatedAt,
-          status: p.status,
-        })));
+      if (response.success && response.data) {
+        // ApiService wraps response, so we access nested data
+        const backendData: any = response.data;
+        if (backendData.data && Array.isArray(backendData.data.projects)) {
+          setProjects(backendData.data.projects.map((p: any) => ({
+            id: p._id,
+            name: p.name,
+            client: p.client || 'Unknown Client',
+            lastModified: p.updatedAt,
+            status: p.status,
+          })));
+        }
       }
     } catch (error) {
       console.error("Failed to fetch projects", error);

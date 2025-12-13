@@ -33,7 +33,10 @@ const PendingSaveHandler: React.FC<{ onProjectCreated: () => void }> = ({ onProj
             });
 
             if (!projectRes.success) throw new Error("Failed to create project");
-            const projectId = projectRes.data.project._id;
+
+            // Fix double-nesting from ApiService
+            const backendData: any = projectRes.data;
+            const projectId = backendData.data.project._id;
 
             // 2. Create Document (BQ)
             // We need to format the BQ data back to markdown or keep as JSON?
@@ -52,10 +55,9 @@ const PendingSaveHandler: React.FC<{ onProjectCreated: () => void }> = ({ onProj
                 type: 'other' // or 'report'
             });
 
-            // Cleanup
             localStorage.removeItem('pendingAnalysis');
             setIsOpen(false);
-            onProjectCreated(); // Trigger dashboard refresh
+            onProjectCreated();
             alert('Project created and analysis saved!');
 
         } catch (error) {
