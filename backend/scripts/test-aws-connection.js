@@ -27,10 +27,18 @@ async function testAWSConnection() {
     ];
 
     console.log('\n2️⃣ Checking bucket existence...');
-    for (const bucketName of bucketNames) {
+    for (const rawBucketName of bucketNames) {
+      if (!rawBucketName) continue;
+
+      // Remove s3:// protocol if present and split by slash
+      const cleanName = rawBucketName.replace(/^s3:\/\//, '');
+      const bucketName = cleanName.split('/')[0];
+
+      if (!bucketName) continue;
+
       try {
         await s3Client.send(new HeadBucketCommand({ Bucket: bucketName }));
-        console.log(`✅ Bucket exists: ${bucketName}`);
+        console.log(`✅ Bucket exists: ${bucketName} ${rawBucketName !== bucketName ? `(Configuration: ${rawBucketName})` : ''}`);
       } catch (error) {
         if (error.name === 'NotFound') {
           console.log(`❌ Bucket not found: ${bucketName}`);
@@ -47,17 +55,17 @@ async function testAWSConnection() {
     });
 
     console.log('\n🎉 AWS S3 connection test completed successfully!');
-    
+
   } catch (error) {
     console.error('❌ AWS connection test failed:', error.message);
-    
+
     if (error.name === 'CredentialsProviderError') {
       console.log('\n🔧 Please set the following environment variables:');
       console.log('   AWS_ACCESS_KEY_ID=your_access_key');
       console.log('   AWS_SECRET_ACCESS_KEY=your_secret_key');
       console.log('   AWS_S3_REGION=your_region (optional)');
     }
-    
+
     process.exit(1);
   }
 }
