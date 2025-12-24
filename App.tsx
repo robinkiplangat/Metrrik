@@ -28,7 +28,7 @@ const App: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const { getToken, isSignedIn } = useAuth();
+  const { getToken, isSignedIn, isLoaded } = useAuth();
   // Database is now handled by the backend API
 
   // Initialize API service with Clerk token getter
@@ -156,10 +156,11 @@ const App: React.FC = () => {
 
   useEffect(() => {
     // Only fetch projects if the user is authenticated (prevents 401 errors for guests)
-    if (isSignedIn) {
+    // We check isLoaded to ensure the authentication state is settled
+    if (isLoaded && isSignedIn) {
       fetchProjects();
     }
-  }, [isSignedIn]); // Trigger fetch when sign-in status changes
+  }, [isLoaded, isSignedIn]); // Trigger fetch when auth state loads or sign-in changes
 
   const handleProjectCreated = () => {
     fetchProjects();
