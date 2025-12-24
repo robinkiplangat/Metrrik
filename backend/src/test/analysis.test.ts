@@ -18,12 +18,12 @@ describe('Analysis API', () => {
       // Create a test file
       const testFilePath = path.join(__dirname, 'test-files', 'test-floor-plan.pdf');
       const testFileDir = path.dirname(testFilePath);
-      
+
       // Ensure directory exists
       if (!fs.existsSync(testFileDir)) {
         fs.mkdirSync(testFileDir, { recursive: true });
       }
-      
+
       // Create a dummy PDF file for testing
       const dummyPdfContent = Buffer.from('%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n2 0 obj\n<<\n/Type /Pages\n/Kids [3 0 R]\n/Count 1\n>>\nendobj\n3 0 obj\n<<\n/Type /Page\n/Parent 2 0 R\n/MediaBox [0 0 612 792]\n>>\nendobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \ntrailer\n<<\n/Size 4\n/Root 1 0 R\n>>\nstartxref\n174\n%%EOF');
       fs.writeFileSync(testFilePath, dummyPdfContent);
@@ -67,11 +67,11 @@ describe('Analysis API', () => {
       // Create a test text file (invalid type)
       const testFilePath = path.join(__dirname, 'test-files', 'test.txt');
       const testFileDir = path.dirname(testFilePath);
-      
+
       if (!fs.existsSync(testFileDir)) {
         fs.mkdirSync(testFileDir, { recursive: true });
       }
-      
+
       fs.writeFileSync(testFilePath, 'This is not a valid floor plan file');
 
       const response = await request(app)
@@ -95,11 +95,11 @@ describe('Analysis API', () => {
       // Create a large test file (simulate large PDF)
       const testFilePath = path.join(__dirname, 'test-files', 'large-test.pdf');
       const testFileDir = path.dirname(testFilePath);
-      
+
       if (!fs.existsSync(testFileDir)) {
         fs.mkdirSync(testFileDir, { recursive: true });
       }
-      
+
       // Create a 6MB file (larger than 5MB threshold)
       const largeContent = Buffer.alloc(6 * 1024 * 1024, 'A');
       fs.writeFileSync(testFilePath, largeContent);
@@ -113,11 +113,11 @@ describe('Analysis API', () => {
 
       expect(response.body).toHaveProperty('success', true);
       expect(response.body.data.analysis).toHaveProperty('projectName', 'Large Project');
-      
+
       // For large files, we expect higher base area
       const totalArea = response.body.data.analysis.totalArea;
       expect(totalArea).toMatch(/\d+ sqm/);
-      
+
       // Clean up test file
       if (fs.existsSync(testFilePath)) {
         fs.unlinkSync(testFilePath);
@@ -127,11 +127,11 @@ describe('Analysis API', () => {
     it('should validate required fields', async () => {
       const testFilePath = path.join(__dirname, 'test-files', 'test-floor-plan.pdf');
       const testFileDir = path.dirname(testFilePath);
-      
+
       if (!fs.existsSync(testFileDir)) {
         fs.mkdirSync(testFileDir, { recursive: true });
       }
-      
+
       const dummyPdfContent = Buffer.from('%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n2 0 obj\n<<\n/Type /Pages\n/Kids [3 0 R]\n/Count 1\n>>\nendobj\n3 0 obj\n<<\n/Type /Page\n/Parent 2 0 R\n/MediaBox [0 0 612 792]\n>>\nendobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \ntrailer\n<<\n/Size 4\n/Root 1 0 R\n>>\nstartxref\n174\n%%EOF');
       fs.writeFileSync(testFilePath, dummyPdfContent);
 
@@ -164,7 +164,7 @@ describe('Analysis API', () => {
 
     it('should return analysis history for authenticated user', async () => {
       // First, create some test analysis data
-      const db = (global as any).mongoClient.db('q-sci-test');
+      const db = (global as any).mongoClient.db('metrrik-test');
       await db.collection('analysis_results').insertOne({
         fileName: 'test-plan.pdf',
         filePath: '/uploads/analysis/test-plan.pdf',
@@ -215,11 +215,11 @@ describe('Analysis API', () => {
 
       const testFilePath = path.join(__dirname, 'test-files', 'test-floor-plan.pdf');
       const testFileDir = path.dirname(testFilePath);
-      
+
       if (!fs.existsSync(testFileDir)) {
         fs.mkdirSync(testFileDir, { recursive: true });
       }
-      
+
       const dummyPdfContent = Buffer.from('%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n2 0 obj\n<<\n/Type /Pages\n/Kids [3 0 R]\n/Count 1\n>>\nendobj\n3 0 obj\n<<\n/Type /Page\n/Parent 2 0 R\n/MediaBox [0 0 612 792]\n>>\nendobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \ntrailer\n<<\n/Size 4\n/Root 1 0 R\n>>\nstartxref\n174\n%%EOF');
       fs.writeFileSync(testFilePath, dummyPdfContent);
 

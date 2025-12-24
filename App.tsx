@@ -28,7 +28,7 @@ const App: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const { getToken } = useAuth();
+  const { getToken, isSignedIn } = useAuth();
   // Database is now handled by the backend API
 
   // Initialize API service with Clerk token getter
@@ -45,7 +45,7 @@ const App: React.FC = () => {
 
   // Global chat state for the copilot
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    { id: '1', sender: 'ai', text: `Hello! I'm Q-Sci, your AI construction copilot. I can help you with cost estimates, project planning, quantity surveying, and more. How can I assist you today?` }
+    { id: '1', sender: 'ai', text: `Hello! I'm Metrrik, your AI construction copilot. I can help you with cost estimates, project planning, quantity surveying, and more. How can I assist you today?` }
   ]);
 
   // Database initialization is now handled by the backend server
@@ -156,11 +156,10 @@ const App: React.FC = () => {
 
   useEffect(() => {
     // Only fetch projects if the user is authenticated (prevents 401 errors for guests)
-    // We can't easily check isSignedIn inside useEffect because of closure/hook rules unless we add it to deps
-    // But fetchProjects handles 401s gracefully (catches error). 
-    // We'll leave it but the log 'Failed to fetch projects' is expected for guests.
-    fetchProjects();
-  }, []);
+    if (isSignedIn) {
+      fetchProjects();
+    }
+  }, [isSignedIn]); // Trigger fetch when sign-in status changes
 
   const handleProjectCreated = () => {
     fetchProjects();

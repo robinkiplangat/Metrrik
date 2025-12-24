@@ -1,14 +1,14 @@
 version: '3.8'
 
 services:
-  q-sci-backend:
+  metrrik-backend:
     build: .
     ports:
       - "3001:3001"
     environment:
       - NODE_ENV=development
       - PORT=3001
-      - MONGODB_URI=mongodb://mongodb:27017/q-sci
+      - MONGODB_URI=mongodb://mongodb:27017/metrrik
       - FRONTEND_URL=http://localhost:5173
     volumes:
       - ./logs:/app/logs
@@ -24,7 +24,7 @@ services:
     environment:
       - MONGO_INITDB_ROOT_USERNAME=admin
       - MONGO_INITDB_ROOT_PASSWORD=password
-      - MONGO_INITDB_DATABASE=q-sci
+      - MONGO_INITDB_DATABASE=metrrik
     volumes:
       - mongodb_data:/data/db
     restart: unless-stopped

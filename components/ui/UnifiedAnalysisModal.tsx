@@ -60,7 +60,7 @@ const UnifiedAnalysisModal: React.FC<UnifiedAnalysisModalProps> = ({
   file,
   showDocumentPreview = true,
   showEditableBreakdown = true,
-  title = "Q-Sci Analysis Results"
+  title = "Metrrik Analysis Results"
 }) => {
   const { user } = useUser();
   const clerk = useClerk();

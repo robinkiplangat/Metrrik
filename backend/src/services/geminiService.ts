@@ -39,14 +39,14 @@ export interface AnalysisResult {
  * @returns Promise<string> JSON string response from AI
  */
 export const analyzeFloorPlan = async (
-  imageData: string, 
-  mimeType: string, 
-  projectName?: string, 
+  imageData: string,
+  mimeType: string,
+  projectName?: string,
   projectType?: string
 ): Promise<string> => {
   try {
     const geminiApiKey = process.env.GEMINI_API_KEY;
-    
+
     if (!geminiApiKey) {
       throw new Error('GEMINI_API_KEY environment variable not set');
     }
@@ -102,11 +102,11 @@ export const analyzeFloorPlan = async (
       }
       `
     };
-    
+
     logger.info(`Calling Gemini AI for analysis of ${projectName || 'unnamed project'}`);
-    
+
     const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
       {
         contents: [{
           parts: [imagePart, textPart]
@@ -125,46 +125,46 @@ export const analyzeFloorPlan = async (
 
     const responseText = response.data.candidates[0].content.parts[0].text;
     logger.info(`Gemini AI analysis completed for ${projectName || 'unnamed project'}`);
-    
+
     return responseText;
-    
+
   } catch (error: any) {
     logger.error('Error analyzing floor plan with Gemini AI:', error);
-    
+
     // Handle specific API errors
     if (error.message && error.message.includes('API key not valid')) {
-      return JSON.stringify({ 
-        error: { 
+      return JSON.stringify({
+        error: {
           message: "Invalid API key. Please check your Gemini API configuration in your environment variables.",
           code: "INVALID_API_KEY"
-        } 
+        }
       });
     }
-    
+
     if (error.message && error.message.includes('quota')) {
-      return JSON.stringify({ 
-        error: { 
+      return JSON.stringify({
+        error: {
           message: "API quota exceeded. Please check your Gemini API usage limits.",
           code: "QUOTA_EXCEEDED"
-        } 
+        }
       });
     }
-    
+
     if (error.code === 'ECONNABORTED') {
-      return JSON.stringify({ 
-        error: { 
+      return JSON.stringify({
+        error: {
           message: "AI analysis timed out. The image might be too complex or the service is busy. Please try again.",
           code: "TIMEOUT"
-        } 
+        }
       });
     }
-    
+
     // Generic error response
-    return JSON.stringify({ 
-      error: { 
+    return JSON.stringify({
+      error: {
         message: "Failed to analyze the drawing. Please ensure the uploaded image is a clear architectural drawing and try again.",
         code: "ANALYSIS_FAILED"
-      } 
+      }
     });
   }
 };
@@ -177,17 +177,17 @@ export const analyzeFloorPlan = async (
 export const generateChatResponse = async (prompt: string): Promise<string> => {
   try {
     const geminiApiKey = process.env.GEMINI_API_KEY;
-    
+
     if (!geminiApiKey) {
       throw new Error('GEMINI_API_KEY environment variable not set');
     }
 
     const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
       {
         contents: [{
           parts: [{
-            text: `You are Q-Sci, an expert AI assistant for Quantity Surveyors in Kenya. Your role is to be an intelligent co-pilot, helping with tasks like creating cost estimates, drafting Bills of Quantities (BQs), and generating professional construction documents.
+            text: `You are Metrrik, an expert AI assistant for Quantity Surveyors in Kenya. Your role is to be an intelligent co-pilot, helping with tasks like creating cost estimates, drafting Bills of Quantities (BQs), and generating professional construction documents.
 
 User Question: ${prompt}
 
@@ -204,7 +204,7 @@ Please provide a helpful, accurate response related to construction management. 
     );
 
     return response.data.candidates[0].content.parts[0].text;
-    
+
   } catch (error: any) {
     logger.error('Error generating chat response:', error);
     return "Sorry, I encountered an error while processing your request. Please try again.";

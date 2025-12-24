@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Q-Sci Backend Startup Script
+# Metrrik Backend Startup Script
 
-echo "🚀 Starting Q-Sci Backend API..."
+echo "🚀 Starting Metrrik Backend API..."
 
 # Check if Node.js is installed
 if ! command -v node &> /dev/null; then

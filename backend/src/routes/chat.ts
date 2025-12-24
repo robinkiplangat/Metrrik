@@ -170,7 +170,7 @@ router.post('/send/:projectId', authenticateUser, [
 
   } catch (error) {
     logger.error('AI service error:', error);
-    
+
     // Save error message
     const errorMessage: ChatMessage = {
       projectId,
@@ -293,7 +293,7 @@ router.get('/stats/:projectId', authenticateUser, asyncHandler(async (req: Authe
 async function callGeminiAPI(message: string, context: any): Promise<any> {
   try {
     const geminiApiKey = process.env.GEMINI_API_KEY;
-    
+
     if (!geminiApiKey) {
       throw new Error('Gemini API key not configured');
     }
@@ -302,7 +302,7 @@ async function callGeminiAPI(message: string, context: any): Promise<any> {
 
     // Prepare the prompt with context
     const prompt = `
-You are an AI assistant for Q-Sci, a construction management platform. You help users with construction-related questions and project management.
+You are an AI assistant for Metrrik, a construction management platform. You help users with construction-related questions and project management.
 
 Project Context:
 - Project: ${context.project.name} (${context.project.type})

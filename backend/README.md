@@ -1,6 +1,6 @@
-# Q-Sci Backend API
+# Metrrik Backend API
 
-A robust Express.js backend API for the Q-Sci construction management platform, built with TypeScript, MongoDB, and modern best practices.
+A robust Express.js backend API for the Metrrik construction management platform, built with TypeScript, MongoDB, and modern best practices.
 
 ## 🚀 Features
 

@@ -10,11 +10,11 @@ interface ChatBubbleProps {
   setDocuments?: (documents: any[]) => void;
 }
 
-const ChatBubble: React.FC<ChatBubbleProps> = ({ 
-  project, 
-  messages, 
-  setMessages, 
-  setDocuments 
+const ChatBubble: React.FC<ChatBubbleProps> = ({
+  project,
+  messages,
+  setMessages,
+  setDocuments
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -29,7 +29,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
         <button
           onClick={toggleChat}
           className="bg-[#29B6F6] hover:bg-[#039BE5] text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#29B6F6] group"
-          title="Q-Sci AI Copilot"
+          title="Metrrik AI Copilot"
         >
           <Icon name="chat" className="w-6 h-6" />
           {!isOpen && (
@@ -50,7 +50,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
                 <Icon name="chat" className="w-4 h-4 text-[#0D47A1]" />
               </div>
               <div>
-                <h3 className="font-semibold text-sm">Q-Sci Copilot</h3>
+                <h3 className="font-semibold text-sm">Metrrik Copilot</h3>
                 <p className="text-xs text-blue-100">
                   {project ? `Project: ${project.name}` : 'General Assistant'}
                 </p>
@@ -67,10 +67,10 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
           {/* Chat Content */}
           <div className="flex-1 overflow-hidden">
             {project ? (
-              <ChatView 
-                project={project} 
-                messages={messages} 
-                setMessages={setMessages} 
+              <ChatView
+                project={project}
+                messages={messages}
+                setMessages={setMessages}
                 setDocuments={setDocuments}
                 isCompact={true}
               />
@@ -78,7 +78,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
               <div className="p-4 h-full flex items-center justify-center text-gray-500">
                 <div className="text-center">
                   <Icon name="chat" className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                  <p className="text-sm">Select a project to start chatting with Q-Sci</p>
+                  <p className="text-sm">Select a project to start chatting with Metrrik</p>
                 </div>
               </div>
             )}
