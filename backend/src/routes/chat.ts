@@ -138,8 +138,8 @@ router.post('/send/:projectId', authenticateUser, [
       }))
     };
 
-    // Call AI service (Gemini)
-    const aiResponse = await callGeminiAPI(message, projectContext);
+    // Call AI service (LLM)
+    const aiResponse = await callGeminiAPI(message, projectContext, req.user!._id, projectId);
 
     // Save AI response
     const aiMessage: ChatMessage = {
@@ -289,16 +289,11 @@ router.get('/stats/:projectId', authenticateUser, asyncHandler(async (req: Authe
   });
 }));
 
-// Helper function to call Gemini API
-async function callGeminiAPI(message: string, context: any): Promise<any> {
+// Helper function to call LLM API (refactored to use LLM service)
+async function callGeminiAPI(message: string, context: any, userId?: string, projectId?: string): Promise<any> {
   try {
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-
-    if (!geminiApiKey) {
-      throw new Error('Gemini API key not configured');
-    }
-
-    const startTime = Date.now();
+    const { llmService } = await import('../../../services/server/llm/llmService');
+    const { LLMProvider, LLMTaskType } = await import('../../../services/shared/llm/types');
 
     // Prepare the prompt with context
     const prompt = `
@@ -319,34 +314,30 @@ User Question: ${message}
 
 Please provide a helpful, accurate response related to construction management and this specific project.`;
 
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`,
+    const response = await llmService.generate(
       {
-        contents: [{
-          parts: [{
-            text: prompt
-          }]
-        }]
+        prompt,
+        systemInstruction: 'You are an AI assistant for Metrrik, a construction management platform.'
       },
       {
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        provider: LLMProvider.GEMINI,
+        taskType: LLMTaskType.CHAT,
+        useCache: true,
+        trackCost: true,
+        userId,
+        projectId
       }
     );
 
-    const responseTime = Date.now() - startTime;
-    const responseText = response.data.candidates[0].content.parts[0].text;
-
     return {
-      text: responseText,
-      model: 'gemini-pro',
-      tokens: responseText.length, // Approximate token count
-      responseTime
+      text: response.text,
+      model: response.model,
+      tokens: response.totalTokens,
+      responseTime: response.latency
     };
 
-  } catch (error) {
-    logger.error('Gemini API error:', error);
+  } catch (error: any) {
+    logger.error('LLM API error:', error);
     throw new Error('Failed to get AI response');
   }
 }

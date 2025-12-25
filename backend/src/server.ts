@@ -36,6 +36,7 @@ import { notFound } from './middleware/notFound';
 import { logger } from './utils/logger';
 import { connectDatabase } from './config/database';
 import { initializeSwagger, apiTags } from './config/swagger';
+import { initializeLLMSystem } from './config/llmInit';
 
 // Import enhanced security middleware
 import {
@@ -214,6 +215,10 @@ async function startServer() {
     // Connect to database
     await connectDatabase();
     logger.info('✅ Database connected successfully');
+
+    // Initialize LLM system
+    await initializeLLMSystem();
+    logger.info('✅ LLM system initialized');
 
     // Initialize algorithm management system
     await initializeAlgorithmSystem();

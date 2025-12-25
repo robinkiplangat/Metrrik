@@ -1,10 +1,19 @@
-import axios from 'axios';
-import { logger } from '../utils/logger';
-
 /**
  * Backend Gemini AI service for floor plan analysis
- * This service handles AI-powered analysis of architectural drawings
+ * Refactored to use LLM abstraction layer
+ * Maintains backward compatibility
  */
+
+import { llmService } from '../../../services/server/llm/llmService';
+import { LLMProviderManager } from '../../../services/server/llm/llmProviderManager';
+import { LLMProvider, LLMTaskType } from '../../../services/shared/llm/types';
+import { logger } from '../utils/logger';
+
+// Initialize provider manager
+const providerManager = LLMProviderManager.getInstance();
+if (!providerManager.isProviderRegistered(LLMProvider.GEMINI)) {
+  providerManager.initializeFromEnv();
+}
 
 export interface AnalysisResult {
   summary: {
@@ -31,7 +40,7 @@ export interface AnalysisResult {
 }
 
 /**
- * Analyze a floor plan using Gemini AI
+ * Analyze a floor plan using LLM (prefers Gemini for vision tasks)
  * @param imageData Base64 encoded image data
  * @param mimeType MIME type of the image
  * @param projectName Name of the project
@@ -45,21 +54,7 @@ export const analyzeFloorPlan = async (
   projectType?: string
 ): Promise<string> => {
   try {
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-
-    if (!geminiApiKey) {
-      throw new Error('GEMINI_API_KEY environment variable not set');
-    }
-
-    const imagePart = {
-      inlineData: {
-        data: imageData,
-        mimeType: mimeType,
-      },
-    };
-
-    const textPart = {
-      text: `
+    const prompt = `
       Analyze this architectural drawing (floor plan or PDF) as an expert Quantity Surveyor in Kenya. Perform a comprehensive analysis and generate a detailed Bill of Quantities (BQ) in the specified JSON format.
       
       Follow these steps in your reasoning:
@@ -100,42 +95,38 @@ export const analyzeFloorPlan = async (
           }
         ]
       }
-      `
-    };
+    `;
 
-    logger.info(`Calling Gemini AI for analysis of ${projectName || 'unnamed project'}`);
+    logger.info(`Calling LLM for analysis of ${projectName || 'unnamed project'}`);
 
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+    const response = await llmService.generate(
       {
-        contents: [{
-          parts: [imagePart, textPart]
+        prompt,
+        images: [{
+          data: imageData,
+          mimeType: mimeType
         }],
-        generationConfig: {
-          responseMimeType: "application/json"
-        }
+        maxTokens: 8000
       },
       {
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        timeout: 60000 // 60 second timeout for AI analysis
+        provider: LLMProvider.GEMINI, // Prefer Gemini for vision tasks
+        taskType: LLMTaskType.VISION,
+        useCache: false, // Don't cache analysis results
+        trackCost: true
       }
     );
 
-    const responseText = response.data.candidates[0].content.parts[0].text;
-    logger.info(`Gemini AI analysis completed for ${projectName || 'unnamed project'}`);
-
-    return responseText;
+    logger.info(`LLM analysis completed for ${projectName || 'unnamed project'}`);
+    return response.text;
 
   } catch (error: any) {
-    logger.error('Error analyzing floor plan with Gemini AI:', error);
+    logger.error('Error analyzing floor plan with LLM:', error);
 
     // Handle specific API errors
-    if (error.message && error.message.includes('API key not valid')) {
+    if (error.message && error.message.includes('API key')) {
       return JSON.stringify({
         error: {
-          message: "Invalid API key. Please check your Gemini API configuration in your environment variables.",
+          message: "Invalid API key. Please check your LLM API configuration in your environment variables.",
           code: "INVALID_API_KEY"
         }
       });
@@ -144,13 +135,13 @@ export const analyzeFloorPlan = async (
     if (error.message && error.message.includes('quota')) {
       return JSON.stringify({
         error: {
-          message: "API quota exceeded. Please check your Gemini API usage limits.",
+          message: "API quota exceeded. Please check your LLM API usage limits.",
           code: "QUOTA_EXCEEDED"
         }
       });
     }
 
-    if (error.code === 'ECONNABORTED') {
+    if (error.message && error.message.includes('timeout')) {
       return JSON.stringify({
         error: {
           message: "AI analysis timed out. The image might be too complex or the service is busy. Please try again.",
@@ -170,40 +161,28 @@ export const analyzeFloorPlan = async (
 };
 
 /**
- * Generate a chat response using Gemini AI
+ * Generate a chat response using LLM
  * @param prompt The user's prompt
  * @returns Promise<string> AI response
  */
 export const generateChatResponse = async (prompt: string): Promise<string> => {
   try {
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-
-    if (!geminiApiKey) {
-      throw new Error('GEMINI_API_KEY environment variable not set');
-    }
-
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+    const response = await llmService.generate(
       {
-        contents: [{
-          parts: [{
-            text: `You are Metrrik, an expert AI assistant for Quantity Surveyors in Kenya. Your role is to be an intelligent co-pilot, helping with tasks like creating cost estimates, drafting Bills of Quantities (BQs), and generating professional construction documents.
+        prompt: `You are Metrrik, an expert AI assistant for Quantity Surveyors in Kenya. Your role is to be an intelligent co-pilot, helping with tasks like creating cost estimates, drafting Bills of Quantities (BQs), and generating professional construction documents.
 
 User Question: ${prompt}
 
 Please provide a helpful, accurate response related to construction management. Use realistic, localized costs for Kenya where possible.`
-          }]
-        }]
       },
       {
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        timeout: 30000 // 30 second timeout for chat
+        taskType: LLMTaskType.CHAT,
+        useCache: true,
+        trackCost: true
       }
     );
 
-    return response.data.candidates[0].content.parts[0].text;
+    return response.text;
 
   } catch (error: any) {
     logger.error('Error generating chat response:', error);

@@ -1,4 +1,5 @@
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { llmService } from './llm/llmService';
+import { LLMProvider, LLMTaskType } from '../shared/llm/types';
 import { vectorService } from './vectorService';
 import { projectService } from './projectService';
 import { userService } from './userService';
@@ -52,13 +53,9 @@ export interface EnhancedChatResponse {
 
 export class KnowledgeBaseService {
   private static instance: KnowledgeBaseService;
-  private ai: GoogleGenAI;
 
   private constructor() {
-    if (!process.env.GEMINI_API_KEY) {
-      throw new Error("GEMINI_API_KEY environment variable not set.");
-    }
-    this.ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    // No longer need to initialize Gemini directly
   }
 
   public static getInstance(): KnowledgeBaseService {
@@ -115,14 +112,21 @@ export class KnowledgeBaseService {
       // Build context prompt
       const contextPrompt = this.buildContextPrompt(query, context, chatHistory);
 
-      // Generate response using Gemini
-      const response: GenerateContentResponse = await this.ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: contextPrompt,
-        config: {
-          systemInstruction: ENHANCED_SYSTEM_INSTRUCTION,
+      // Generate response using LLM service
+      const response = await llmService.generate(
+        {
+          prompt: contextPrompt,
+          systemInstruction: ENHANCED_SYSTEM_INSTRUCTION
         },
-      });
+        {
+          provider: LLMProvider.GEMINI,
+          taskType: LLMTaskType.CHAT,
+          useCache: true,
+          trackCost: true,
+          userId: context.userId,
+          projectId: context.projectId
+        }
+      );
 
       // Extract context information
       const contextInfo = this.extractContextInfo(context, response.text);
