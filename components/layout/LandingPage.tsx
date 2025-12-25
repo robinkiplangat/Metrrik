@@ -37,7 +37,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   useEffect(() => {
     // Developer override - check for bypass flag
     const isDeveloper = localStorage.getItem('metrrik_developer_mode') === 'true';
-    const freeAnalysisUsed = localStorage.getItem('metrrik_free_analysis_used');
+    let freeAnalysisUsed = localStorage.getItem('metrrik_free_analysis_used');
+
+    // Migration logic: Check for old 'qsci' key if 'metrrik' key is missing
+    if (freeAnalysisUsed === null) {
+      const oldFreeAnalysisUsed = localStorage.getItem('qsci_free_analysis_used');
+      if (oldFreeAnalysisUsed === 'true') {
+        localStorage.setItem('metrrik_free_analysis_used', 'true');
+        freeAnalysisUsed = 'true';
+      }
+    }
 
     // If in developer mode, always allow free analysis
     setHasUsedFreeAnalysis(isDeveloper ? false : freeAnalysisUsed === 'true');
