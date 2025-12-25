@@ -1,7 +1,7 @@
 {
-  "name": "q-sci-backend",
+  "name": "metrrik-backend",
   "version": "1.0.0",
-  "description": "Q-Sci Construction Management Backend API",
+  "description": "Metrrik Construction Management Backend API",
   "main": "dist/server.js",
   "scripts": {
     "dev": "nodemon src/server.ts",

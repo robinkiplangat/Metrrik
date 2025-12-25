@@ -11,20 +11,20 @@ beforeAll(async () => {
     // Start in-memory MongoDB instance
     mongoServer = await MongoMemoryServer.create({
       instance: {
-        dbName: 'q-sci-test',
+        dbName: 'metrrik-test',
       },
     });
-    
+
     const mongoUri = mongoServer.getUri();
     mongoClient = new MongoClient(mongoUri);
     await mongoClient.connect();
-    
+
     // Set test environment variables
     process.env.NODE_ENV = 'test';
     process.env.MONGODB_URI = mongoUri;
     process.env.JWT_SECRET = 'test-jwt-secret';
     process.env.API_URL = 'http://localhost:5050';
-    
+
     logger.info('Test database setup completed');
   } catch (error) {
     logger.error('Failed to setup test database:', error);
@@ -50,9 +50,9 @@ afterAll(async () => {
 // Clean up database between tests
 beforeEach(async () => {
   if (mongoClient) {
-    const db = mongoClient.db('q-sci-test');
+    const db = mongoClient.db('metrrik-test');
     const collections = await db.listCollections().toArray();
-    
+
     for (const collection of collections) {
       await db.collection(collection.name).deleteMany({});
     }
@@ -62,7 +62,7 @@ beforeEach(async () => {
 // Global test utilities
 global.testUtils = {
   createTestUser: async () => {
-    const db = mongoClient.db('q-sci-test');
+    const db = mongoClient.db('metrrik-test');
     const user = {
       clerkUserId: 'test-user-123',
       email: 'test@example.com',
@@ -77,13 +77,13 @@ global.testUtils = {
         defaultProjectType: 'residential'
       }
     };
-    
+
     const result = await db.collection('users').insertOne(user);
     return { ...user, _id: result.insertedId };
   },
-  
+
   createTestProject: async (userId: string) => {
-    const db = mongoClient.db('q-sci-test');
+    const db = mongoClient.db('metrrik-test');
     const project = {
       name: 'Test Project',
       client: 'Test Client',
@@ -97,11 +97,11 @@ global.testUtils = {
         location: 'Nairobi, Kenya'
       }
     };
-    
+
     const result = await db.collection('projects').insertOne(project);
     return { ...project, _id: result.insertedId };
   },
-  
+
   generateTestToken: () => {
     // In a real implementation, you would generate a proper JWT token
     return 'test-bearer-token';

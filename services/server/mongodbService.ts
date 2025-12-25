@@ -140,9 +140,9 @@ export const initializeMongoDB = async (): Promise<void> => {
 
     client = new MongoClient(mongoUri);
     await client.connect();
-    
-    // Use the database name from the URI or default to 'qsci'
-    const dbName = mongoUri.split('/').pop()?.split('?')[0] || 'qsci';
+
+    // Use the database name from the URI or default to 'metrrik'
+    const dbName = mongoUri.split('/').pop()?.split('?')[0] || 'metrrik';
     db = client.db(dbName);
 
     // Initialize collections
@@ -297,11 +297,11 @@ export const getProjectsByUser = async (userId: ObjectId): Promise<ProjectDocume
 export const updateProject = async (projectId: ObjectId, updates: Partial<ProjectDocument>): Promise<void> => {
   await projectsCollection.updateOne(
     { _id: projectId },
-    { 
-      $set: { 
-        ...updates, 
-        lastModified: new Date() 
-      } 
+    {
+      $set: {
+        ...updates,
+        lastModified: new Date()
+      }
     }
   );
 };
@@ -356,10 +356,10 @@ export const updateDocument = async (documentId: ObjectId, updates: Partial<Docu
 
   await documentsCollection.updateOne(
     { _id: documentId },
-    { 
-      $set: { 
-        ...updates, 
-        lastModified: new Date() 
+    {
+      $set: {
+        ...updates,
+        lastModified: new Date()
       },
       $push: { versions: newVersion }
     }

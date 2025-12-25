@@ -44,7 +44,7 @@ const EnhancedMarkdown: React.FC<{ text: string }> = ({ text }) => {
 };
 
 // Context information display component
-const ContextInfo: React.FC<{ 
+const ContextInfo: React.FC<{
   context: {
     documentsUsed: string[];
     confidence: number;
@@ -70,12 +70,12 @@ const ContextInfo: React.FC<{
             Response Context (Confidence: {(context.confidence * 100).toFixed(0)}%)
           </span>
         </div>
-        <Icon 
-          name={isExpanded ? "chevron-up" : "chevron-down"} 
-          className="w-4 h-4 text-blue-600" 
+        <Icon
+          name={isExpanded ? "chevron-up" : "chevron-down"}
+          className="w-4 h-4 text-blue-600"
         />
       </button>
-      
+
       {isExpanded && (
         <div className="mt-3 space-y-2">
           {context.sources.length > 0 && (
@@ -91,7 +91,7 @@ const ContextInfo: React.FC<{
               </ul>
             </div>
           )}
-          
+
           {context.suggestions.length > 0 && (
             <div>
               <h4 className="text-xs font-semibold text-blue-700 mb-1">Suggestions:</h4>
@@ -112,18 +112,18 @@ const ContextInfo: React.FC<{
 };
 
 // Enhanced chat bubble with context
-const EnhancedChatBubble: React.FC<{ 
-  message: ChatMessage & { 
+const EnhancedChatBubble: React.FC<{
+  message: ChatMessage & {
     context?: {
       documentsUsed: string[];
       confidence: number;
       sources: string[];
       suggestions: string[];
     }
-  } 
+  }
 }> = ({ message }) => {
   const isUser = message.sender === 'user';
-  
+
   if (message.isTyping) {
     return (
       <div className="flex items-start space-x-3 py-4">
@@ -145,24 +145,22 @@ const EnhancedChatBubble: React.FC<{
 
   return (
     <div className={`flex items-start space-x-3 py-4 ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`}>
-      <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center ${
-        isUser 
-          ? 'bg-[#29B6F6]' 
-          : 'bg-[#0D47A1]/20'
-      }`}>
+      <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center ${isUser
+        ? 'bg-[#29B6F6]'
+        : 'bg-[#0D47A1]/20'
+        }`}>
         {isUser ? (
           <Icon name="user" className="w-5 h-5 text-white" />
         ) : (
           <Icon name="chat" className="w-5 h-5 text-[#0D47A1]" />
         )}
       </div>
-      
+
       <div className={`flex-1 max-w-[80%] ${isUser ? 'text-right' : ''}`}>
-        <div className={`rounded-lg p-4 ${
-          isUser 
-            ? 'bg-[#29B6F6] text-white' 
-            : 'bg-white border border-gray-200'
-        }`}>
+        <div className={`rounded-lg p-4 ${isUser
+          ? 'bg-[#29B6F6] text-white'
+          : 'bg-white border border-gray-200'
+          }`}>
           {isUser ? (
             <p className="text-sm">{message.text}</p>
           ) : (
@@ -222,7 +220,7 @@ const KnowledgeSearch: React.FC<{
           <span>Search</span>
         </button>
       </div>
-      
+
       {suggestions.length > 0 && (
         <div className="mt-2">
           <div className="text-xs text-gray-500 mb-1">Suggestions:</div>
@@ -337,16 +335,16 @@ const EnhancedChatView: React.FC<EnhancedChatViewProps> = ({
     try {
       const results = await searchDocuments(query, project?.id, 5);
       setSearchResults(results);
-      
+
       // Create a message with search results
       const searchMessage: ChatMessage = {
         id: `search-${Date.now()}`,
         sender: 'ai',
-        text: `Found ${results.length} relevant documents for "${query}":\n\n${results.map((result, index) => 
+        text: `Found ${results.length} relevant documents for "${query}":\n\n${results.map((result, index) =>
           `${index + 1}. **${result.document.name}** (${(result.similarity * 100).toFixed(1)}% match)\n   ${result.document.content.substring(0, 200)}...`
         ).join('\n\n')}`
       };
-      
+
       setMessages([...messages, searchMessage]);
     } catch (error) {
       console.error('Knowledge search error:', error);
@@ -363,7 +361,7 @@ const EnhancedChatView: React.FC<EnhancedChatViewProps> = ({
   return (
     <div className={`flex flex-col h-full ${isCompact ? 'h-[600px]' : 'h-full'}`}>
       {/* Knowledge Search */}
-      <KnowledgeSearch 
+      <KnowledgeSearch
         onSearch={handleKnowledgeSearch}
         isSearching={isSearching}
       />
@@ -373,9 +371,9 @@ const EnhancedChatView: React.FC<EnhancedChatViewProps> = ({
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-500">
             <Logo className="w-16 h-16 mb-4 opacity-50" />
-            <h3 className="text-lg font-semibold mb-2">Welcome to Q-Sci AI</h3>
+            <h3 className="text-lg font-semibold mb-2">Welcome to Metrrik AI</h3>
             <p className="text-sm text-center max-w-md">
-              I'm your intelligent construction copilot. I can help you with cost estimates, 
+              I'm your intelligent construction copilot. I can help you with cost estimates,
               project analysis, document management, and more. Ask me anything about your project!
             </p>
             <div className="mt-4 text-xs text-gray-400">
@@ -392,9 +390,9 @@ const EnhancedChatView: React.FC<EnhancedChatViewProps> = ({
             <EnhancedChatBubble key={message.id} message={message} />
           ))
         )}
-        
+
         {isTyping && (
-          <EnhancedChatBubble 
+          <EnhancedChatBubble
             message={{
               id: 'typing',
               sender: 'ai',
@@ -403,7 +401,7 @@ const EnhancedChatView: React.FC<EnhancedChatViewProps> = ({
             }}
           />
         )}
-        
+
         <div ref={messagesEndRef} />
       </div>
 
@@ -414,7 +412,7 @@ const EnhancedChatView: React.FC<EnhancedChatViewProps> = ({
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask Q-Sci anything about your project..."
+            placeholder="Ask Metrrik anything about your project..."
             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
             rows={2}
             disabled={isTyping}

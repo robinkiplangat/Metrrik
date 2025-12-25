@@ -2,14 +2,14 @@ import expressJSDocSwagger from 'express-jsdoc-swagger';
 import { Express } from 'express';
 
 /**
- * Swagger configuration for Q-Sci API
+ * Swagger configuration for Metrrik API
  */
 export const swaggerOptions = {
   info: {
     version: '1.0.0',
-    title: 'Q-Sci Construction Management API',
+    title: 'Metrrik Construction Management API',
     description: `
-      # Q-Sci Construction Management API
+      # Metrrik Construction Management API
       
       A comprehensive API for construction project management, cost estimation, and AI-powered analysis.
       
@@ -33,9 +33,9 @@ export const swaggerOptions = {
       url: 'https://opensource.org/licenses/MIT',
     },
     contact: {
-      name: 'Q-Sci Team',
-      email: 'support@q-sci.com',
-      url: 'https://qsci.fourbic.com',
+      name: 'Metrrik Team',
+      email: 'support@metrrik.com',
+      url: 'https://metrrik.com',
     },
   },
   security: {
@@ -55,7 +55,7 @@ export const swaggerOptions = {
       description: 'Development server',
     },
     {
-      url: 'https://q-sci.fourbic.com',
+      url: 'https://metrrik.com',
       description: 'Production server',
     },
   ],
@@ -76,8 +76,8 @@ export const swaggerOptions = {
       .swagger-ui .info .title { color: #29B6F6; }
       .swagger-ui .scheme-container { background: #f8f9fa; padding: 10px; border-radius: 4px; }
     `,
-    customSiteTitle: 'Q-Sci API Documentation',
-    customfavIcon: '/assets/Q-Sci_Icon.png',
+    customSiteTitle: 'Metrrik API Documentation',
+    customfavIcon: '/assets/metrrik_icon.png',
   },
   multiple: false,
 };
@@ -100,7 +100,7 @@ export const commonSchemas = {
    * @property {object} data - Response data
    * @property {string} message - Success message
    */
-  
+
   /**
    * Error response
    * @typedef {object} ErrorResponse
@@ -109,7 +109,7 @@ export const commonSchemas = {
    * @property {string} error.message - Error message
    * @property {string} error.stack - Error stack trace (development only)
    */
-  
+
   /**
    * Pagination response
    * @typedef {object} PaginationResponse

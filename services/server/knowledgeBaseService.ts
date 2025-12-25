@@ -6,7 +6,7 @@ import type { ChatMessage, Document, UploadedFile, ReportDocument, AnalyzedBQ } 
 import type { VectorSearchResult } from './vectorService';
 
 // Enhanced system instruction with knowledge base context
-const ENHANCED_SYSTEM_INSTRUCTION = `You are Q-Sci, an expert AI assistant for Quantity Surveyors in Kenya. You have access to a comprehensive knowledge base that includes:
+const ENHANCED_SYSTEM_INSTRUCTION = `You are Metrrik, an expert AI assistant for Quantity Surveyors in Kenya. You have access to a comprehensive knowledge base that includes:
 
 1. **Project Documents**: Estimates, proposals, BQ drafts, and documentation
 2. **Historical Data**: Previous projects, cost analyses, and reports
@@ -70,7 +70,7 @@ export class KnowledgeBaseService {
 
   // Get knowledge context for a query
   public async getKnowledgeContext(
-    query: string, 
+    query: string,
     projectId?: string
   ): Promise<KnowledgeContext> {
     const userId = userService.getUserId();
@@ -80,7 +80,7 @@ export class KnowledgeBaseService {
 
     // Perform vector search to find relevant documents
     const searchResults = await vectorService.searchSimilarDocuments(query, projectId, 5);
-    
+
     // Get relevant documents, reports, and files
     const [documents, reports, files] = await Promise.all([
       projectService.getUserDocuments(projectId),
@@ -111,10 +111,10 @@ export class KnowledgeBaseService {
     try {
       // Get knowledge context
       const context = await this.getKnowledgeContext(query, projectId);
-      
+
       // Build context prompt
       const contextPrompt = this.buildContextPrompt(query, context, chatHistory);
-      
+
       // Generate response using Gemini
       const response: GenerateContentResponse = await this.ai.models.generateContent({
         model: 'gemini-2.5-flash',
@@ -147,8 +147,8 @@ export class KnowledgeBaseService {
 
   // Build context prompt with relevant information
   private buildContextPrompt(
-    query: string, 
-    context: KnowledgeContext, 
+    query: string,
+    context: KnowledgeContext,
     chatHistory: ChatMessage[]
   ): string {
     let prompt = `User Query: "${query}"\n\n`;
@@ -208,7 +208,7 @@ export class KnowledgeBaseService {
 
   // Extract context information from response
   private extractContextInfo(
-    context: KnowledgeContext, 
+    context: KnowledgeContext,
     response: string
   ): {
     documentsUsed: string[];
@@ -287,13 +287,13 @@ export class KnowledgeBaseService {
 
       // Analyze cost trends from documents
       const costTrends = this.analyzeCostTrends(documents);
-      
+
       // Extract common materials
       const commonMaterials = this.extractCommonMaterials(documents);
-      
+
       // Generate recommendations
       const recommendations = this.generateRecommendations(documents, reports);
-      
+
       // Find similar projects (simplified)
       const similarProjects = await this.findSimilarProjects(projectId);
 
@@ -317,7 +317,7 @@ export class KnowledgeBaseService {
   // Analyze cost trends from documents
   private analyzeCostTrends(documents: Document[]): any[] {
     const trends: any[] = [];
-    
+
     documents.forEach(doc => {
       if (doc.type === 'Estimate' && doc.content.includes('KES')) {
         // Extract cost information (simplified)
@@ -331,47 +331,47 @@ export class KnowledgeBaseService {
         }
       }
     });
-    
+
     return trends;
   }
 
   // Extract common materials from documents
   private extractCommonMaterials(documents: Document[]): string[] {
     const materials = new Set<string>();
-    
+
     documents.forEach(doc => {
       const content = doc.content.toLowerCase();
       const materialKeywords = [
         'concrete', 'steel', 'brick', 'block', 'tiles', 'paint', 'roofing',
         'timber', 'glass', 'aluminum', 'cement', 'sand', 'gravel'
       ];
-      
+
       materialKeywords.forEach(material => {
         if (content.includes(material)) {
           materials.add(material);
         }
       });
     });
-    
+
     return Array.from(materials);
   }
 
   // Generate recommendations based on project data
   private generateRecommendations(documents: Document[], reports: ReportDocument[]): string[] {
     const recommendations: string[] = [];
-    
+
     if (documents.length === 0) {
       recommendations.push("Create initial project documents to build knowledge base");
     }
-    
+
     if (reports.length === 0) {
       recommendations.push("Generate analysis reports for better project insights");
     }
-    
+
     if (documents.filter(d => d.type === 'Estimate').length === 0) {
       recommendations.push("Create cost estimates for better budget planning");
     }
-    
+
     return recommendations;
   }
 
@@ -396,7 +396,7 @@ export class KnowledgeBaseService {
 
       // Create embedding for the content
       const embedding = await vectorService.generateEmbedding(content);
-      
+
       // Save to vector database (this would be implemented in the vector service)
       // For now, we'll just log the action
       console.log(`Updated knowledge base with ${type} content for project ${projectId}`);

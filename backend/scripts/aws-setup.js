@@ -16,6 +16,9 @@ const BUCKET_NAMES = {
   main: process.env.AWS_S3_BUCKET || 'q-sci-uploads',
   analysis: process.env.AWS_S3_ANALYSIS_BUCKET || 'q-sci-analysis-results',
   temp: process.env.AWS_S3_TEMP_BUCKET || 'q-sci-temp-files'
+  // main: process.env.AWS_S3_BUCKET || 'metrrik-uploads',
+  // analysis: process.env.AWS_S3_ANALYSIS_BUCKET || 'metrrik-analysis-results',
+  // temp: process.env.AWS_S3_TEMP_BUCKET || 'metrrik-temp-files'
 };
 
 async function checkAWSCredentials() {
@@ -149,7 +152,7 @@ NODE_ENV=development
 FRONTEND_URL=http://localhost:3000
 
 # Database Configuration
-MONGODB_URI=${process.env.MONGODB_URI || 'mongodb://localhost:27017/q-sci'}
+MONGODB_URI=${process.env.MONGODB_URI || 'mongodb://localhost:27017/metrrik'}
 
 # AI Services
 GEMINI_API_KEY=${process.env.GEMINI_API_KEY || 'your_gemini_api_key_here'}
@@ -175,7 +178,7 @@ CORS_ORIGIN=http://localhost:3000
 }
 
 async function setupAWSInfrastructure() {
-  console.log('🚀 Setting up AWS S3 infrastructure for Q-Sci...\n');
+  console.log('🚀 Setting up AWS S3 infrastructure for Metrrik...\n');
 
   // Check AWS credentials
   if (!(await checkAWSCredentials())) {
@@ -211,12 +214,12 @@ async function setupAWSInfrastructure() {
   console.log(`   Analysis Results: ${BUCKET_NAMES.analysis}`);
   console.log(`   Temporary Files: ${BUCKET_NAMES.temp}`);
   console.log(`   Region: ${region}`);
-  
+
   console.log('\n🔧 Next Steps:');
   console.log('   1. Review the generated .env file');
   console.log('   2. Restart your backend server');
   console.log('   3. Test file uploads through the application');
-  
+
   console.log('\n🌐 Bucket URLs:');
   console.log(`   Main: https://${BUCKET_NAMES.main}.s3.${region}.amazonaws.com/`);
   console.log(`   Analysis: https://${BUCKET_NAMES.analysis}.s3.${region}.amazonaws.com/`);

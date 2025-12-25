@@ -1,7 +1,7 @@
 #!/usr/bin/env ts-node
 
 /**
- * Test Runner for Q-Sci Backend API
+ * Test Runner for Metrrik Backend API
  * 
  * This script provides a comprehensive test runner with the following features:
  * - Individual test execution
@@ -36,7 +36,7 @@ class TestRunner {
    * Run all tests with specified options
    */
   async runTests(options: TestOptions = {}): Promise<void> {
-    console.log('🚀 Starting Q-Sci Backend Test Suite...\n');
+    console.log('🚀 Starting Metrrik Backend Test Suite...\n');
 
     try {
       // Run specific test if specified
@@ -100,7 +100,7 @@ class TestRunner {
    */
   private async runSpecificTest(testName: string, options: TestOptions): Promise<void> {
     const testFile = path.join(this.testDir, `${testName}.test.ts`);
-    
+
     if (!fs.existsSync(testFile)) {
       throw new Error(`Test file not found: ${testFile}`);
     }
@@ -129,7 +129,7 @@ class TestRunner {
     try {
       // Check if Swagger UI is accessible
       const { default: fetch } = await import('node-fetch');
-      
+
       const response = await fetch('http://localhost:5050/api-docs');
       if (response.ok) {
         console.log('✅ Swagger UI is accessible');
@@ -140,8 +140,8 @@ class TestRunner {
       // Check if OpenAPI JSON is valid
       const openApiResponse = await fetch('http://localhost:5050/api-docs.json');
       if (openApiResponse.ok) {
-        const openApiSpec = await openApiResponse.json();
-        
+        const openApiSpec = await openApiResponse.json() as any;
+
         // Basic validation
         if (openApiSpec.openapi && openApiSpec.info && openApiSpec.paths) {
           console.log('✅ OpenAPI specification is valid');
@@ -172,18 +172,18 @@ class TestRunner {
       const testPath = path.join(this.testDir, testFile);
       if (fs.existsSync(testPath)) {
         console.log(`🏃 Running benchmark for ${testFile}...`);
-        
+
         const startTime = Date.now();
-        
+
         try {
           execSync(`jest ${testPath} --verbose`, {
             stdio: 'pipe',
             cwd: this.projectRoot,
           });
-          
+
           const endTime = Date.now();
           const duration = endTime - startTime;
-          
+
           console.log(`✅ ${testFile} completed in ${duration}ms`);
         } catch (error) {
           console.log(`❌ ${testFile} failed during benchmark`);
@@ -198,7 +198,7 @@ class TestRunner {
   private generateTestReport(): void {
     console.log('\n📊 Test Report Summary:');
     console.log('========================');
-    
+
     // This would typically read from Jest's coverage reports
     console.log('• Total Tests: Run `npm test` to see detailed results');
     console.log('• Coverage: Run `npm test -- --coverage` for coverage report');
@@ -235,7 +235,7 @@ async function main() {
         break;
       case '--help':
         console.log(`
-Q-Sci Backend Test Runner
+Metrrik Backend Test Runner
 
 Usage: npm run test:runner [options]
 

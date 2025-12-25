@@ -1,11 +1,11 @@
 import { useUser } from '@clerk/clerk-react';
-import { 
-  createOrUpdateUser, 
-  getUserByClerkId, 
-  createSession, 
+import {
+  createOrUpdateUser,
+  getUserByClerkId,
+  createSession,
   getSessionByToken,
   updateSessionAccess,
-  invalidateSession 
+  invalidateSession
 } from './databaseInit';
 import type { User, Session } from '../types';
 
@@ -15,7 +15,7 @@ export class UserService {
   private currentUser: User | null = null;
   private currentSession: Session | null = null;
 
-  private constructor() {}
+  private constructor() { }
 
   public static getInstance(): UserService {
     if (!UserService.instance) {
@@ -30,7 +30,7 @@ export class UserService {
       // Create or update user in our database
       const user = await createOrUpdateUser(clerkUser);
       this.currentUser = user;
-      
+
       // Create a new session
       const sessionToken = this.generateSessionToken();
       const session = await createSession(
@@ -39,7 +39,7 @@ export class UserService {
         navigator.userAgent,
         '127.0.0.1' // In production, get real IP
       );
-      
+
       this.currentSession = {
         _id: session._id?.toString(),
         userId: session.userId.toString(),
@@ -53,8 +53,8 @@ export class UserService {
       };
 
       // Store session token in localStorage for persistence
-      localStorage.setItem('qsci_session_token', sessionToken);
-      
+      localStorage.setItem('metrrik_session_token', sessionToken);
+
       return user;
     } catch (error) {
       console.error('Failed to initialize user:', error);
@@ -75,27 +75,27 @@ export class UserService {
   // Validate session from stored token
   public async validateStoredSession(): Promise<boolean> {
     try {
-      const storedToken = localStorage.getItem('qsci_session_token');
+      const storedToken = localStorage.getItem('metrrik_session_token');
       if (!storedToken) {
         return false;
       }
 
       const session = await getSessionByToken(storedToken);
       if (!session || !session.isActive) {
-        localStorage.removeItem('qsci_session_token');
+        localStorage.removeItem('metrrik_session_token');
         return false;
       }
 
       // Check if session is expired
       if (new Date() > session.expiresAt) {
         await invalidateSession(storedToken);
-        localStorage.removeItem('qsci_session_token');
+        localStorage.removeItem('metrrik_session_token');
         return false;
       }
 
       // Update last access time
       await updateSessionAccess(session._id!);
-      
+
       // Get user data
       const user = await getUserByClerkId(session.userId.toString());
       if (!user) {
@@ -128,8 +128,8 @@ export class UserService {
       if (this.currentSession?.sessionToken) {
         await invalidateSession(this.currentSession.sessionToken);
       }
-      
-      localStorage.removeItem('qsci_session_token');
+
+      localStorage.removeItem('metrrik_session_token');
       this.currentUser = null;
       this.currentSession = null;
     } catch (error) {

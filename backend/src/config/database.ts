@@ -20,7 +20,7 @@ export async function connectDatabase(): Promise<void> {
     });
 
     await client.connect();
-    db = client.db('q-sci');
+    db = client.db('metrrik');
 
     // Test the connection
     await db.admin().ping();

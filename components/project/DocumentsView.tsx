@@ -7,11 +7,11 @@ import NewDocumentModal from './NewDocumentModal';
 import EnhancedDocumentPreview from '../ui/EnhancedDocumentPreview';
 
 const initialDocuments: Document[] = [
-    { 
-        id: 'doc-1', 
-        name: 'Preliminary Cost Estimate', 
-        type: 'Estimate', 
-        createdAt: '2024-07-22T11:30:00Z', 
+    {
+        id: 'doc-1',
+        name: 'Preliminary Cost Estimate',
+        type: 'Estimate',
+        createdAt: '2024-07-22T11:30:00Z',
         content: `# Preliminary Cost Estimate
 
 ## Project Summary
@@ -51,14 +51,14 @@ const initialDocuments: Document[] = [
 1. Client review and approval
 2. Detailed design development
 3. Final cost estimation
-4. Construction planning`, 
-        versions: [{version: 1, createdAt: '2024-07-22T11:30:00Z', content: 'Initial costings...' }] 
+4. Construction planning`,
+        versions: [{ version: 1, createdAt: '2024-07-22T11:30:00Z', content: 'Initial costings...' }]
     },
-    { 
-        id: 'doc-2', 
-        name: 'Client Proposal V1', 
-        type: 'Proposal', 
-        createdAt: '2024-07-22T15:00:00Z', 
+    {
+        id: 'doc-2',
+        name: 'Client Proposal V1',
+        type: 'Proposal',
+        createdAt: '2024-07-22T15:00:00Z',
         content: `# Client Proposal
 
 ## Project Overview
@@ -82,14 +82,14 @@ This document outlines the scope of work, timeline, and payment schedule for the
 
 ---
 
-*For any questions, please contact our team.*`, 
-        versions: [{version: 1, createdAt: '2024-07-22T15:00:00Z', content: 'Proposal details...' }] 
+*For any questions, please contact our team.*`,
+        versions: [{ version: 1, createdAt: '2024-07-22T15:00:00Z', content: 'Proposal details...' }]
     },
-    { 
-        id: 'doc-3', 
-        name: 'Floor Plan BQ Draft', 
-        type: 'BQ Draft', 
-        createdAt: '2024-07-23T09:00:00Z', 
+    {
+        id: 'doc-3',
+        name: 'Floor Plan BQ Draft',
+        type: 'BQ Draft',
+        createdAt: '2024-07-23T09:00:00Z',
         content: `# Bill of Quantities - Floor Plan Analysis
 
 ## AI-Generated Analysis
@@ -103,7 +103,7 @@ This document outlines the scope of work, timeline, and payment schedule for the
 
 #### Structural Elements
 - **Foundation:** Strip foundation with reinforced concrete
-- **Walls:** 6-inch blockwork with plaster finish
+- **Walls:** 6-inch blockwork with platform finish
 - **Roof:** GCI roofing with timber trusses
 
 #### Cost Breakdown
@@ -128,8 +128,8 @@ function calculateTotalCost(items) {
 }
 \`\`\`
 
-> **Disclaimer:** This analysis is based on AI interpretation of the provided floor plan. Manual verification is recommended.`, 
-        versions: [{version: 1, createdAt: '2024-07-23T09:00:00Z', content: 'BQ draft from plan...' }] 
+> **Disclaimer:** This analysis is based on AI interpretation of the provided floor plan. Manual verification is recommended.`,
+        versions: [{ version: 1, createdAt: '2024-07-23T09:00:00Z', content: 'BQ draft from plan...' }]
     },
 ];
 
@@ -144,7 +144,6 @@ const ALL_DOC_TYPES: Document['type'][] = ['Estimate', 'Proposal', 'BQ Draft', '
 
 type SortableKeys = keyof Pick<Document, 'name' | 'type' | 'createdAt'>;
 
-// ... (HistoryModal and PreviewModal components remain unchanged) ...
 interface HistoryModalProps {
     doc: Document;
     onClose: () => void;
@@ -178,11 +177,8 @@ const HistoryModal: React.FC<HistoryModalProps> = ({ doc, onClose, onRevert }) =
     </div>
 );
 
-
-
-
 const getTypeColorClasses = (type: Document['type']) => {
-    switch(type) {
+    switch (type) {
         case 'Estimate': return 'bg-blue-100 text-blue-800';
         case 'Proposal': return 'bg-green-100 text-green-800';
         case 'BQ Draft': return 'bg-yellow-100 text-yellow-800';
@@ -209,12 +205,9 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; doc: Document | null }>({ isOpen: false, doc: null });
     const [showNewDocumentModal, setShowNewDocumentModal] = useState(false);
 
-    // Dummy state for custom templates, in a real app this would be more robust
-    const [customTemplates, setCustomTemplates] = useState<Template[]>([]);
-
     useEffect(() => {
         try {
-            const savedDocsRaw = localStorage.getItem(`qsci-docs-${project.id}`);
+            const savedDocsRaw = localStorage.getItem(`metrrik-docs-${project.id}`);
             if (savedDocsRaw) {
                 const savedDocs = JSON.parse(savedDocsRaw);
                 const docsWithVersions = savedDocs.map((d: any) => d.versions ? d : { ...d, versions: [{ version: 1, createdAt: d.createdAt, content: d.content }] });
@@ -230,10 +223,10 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
 
     useEffect(() => {
         if (documents.length > 0) {
-            localStorage.setItem(`qsci-docs-${project.id}`, JSON.stringify(documents));
+            localStorage.setItem(`metrrik-docs-${project.id}`, JSON.stringify(documents));
         }
     }, [documents, project.id]);
-    
+
     const sortedAndFilteredDocuments = useMemo(() => {
         let sortableItems = [...documents];
         if (activeTag !== 'All') {
@@ -360,14 +353,14 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
 
     return (
         <div className="bg-white rounded-xl shadow-sm p-6 h-full flex flex-col space-y-6 overflow-hidden">
-             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                 {/* AI Generation */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* AI Generation */}
                 <div className="space-y-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
                     <h3 className="text-lg font-semibold text-[#0D47A1]">Generate Document with AI</h3>
                     <select value={aiDocType} onChange={e => setAiDocType(e.target.value as Document['type'])} className="w-full p-2 border border-gray-300 rounded-md">
                         {ALL_DOC_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
                     </select>
-                    <textarea 
+                    <textarea
                         value={aiDocPrompt}
                         onChange={e => setAiDocPrompt(e.target.value)}
                         placeholder={`e.g., "A preliminary cost estimate for a 3-bedroom bungalow..."`}
@@ -378,17 +371,17 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
                         {isGenerating ? 'Generating...' : 'Generate'}
                     </button>
                 </div>
-                 {/* Templates */}
+                {/* Templates */}
                 <div className="space-y-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                     <h3 className="text-lg font-semibold text-[#424242]">Create from Template</h3>
-                     <div className="grid grid-cols-2 gap-3">
+                    <h3 className="text-lg font-semibold text-[#424242]">Create from Template</h3>
+                    <div className="grid grid-cols-2 gap-3">
                         {documentTemplates.map(template => (
                             <div key={template.id} onClick={() => createFromTemplate(template)} className="bg-white p-3 rounded-md hover:bg-gray-100 hover:shadow-sm transition-all cursor-pointer border">
-                               <h4 className="font-bold text-sm text-[#0D47A1]">{template.name}</h4>
-                               <p className="text-xs text-gray-600 mt-1 truncate">{template.description}</p>
+                                <h4 className="font-bold text-sm text-[#0D47A1]">{template.name}</h4>
+                                <p className="text-xs text-gray-600 mt-1 truncate">{template.description}</p>
                             </div>
                         ))}
-                     </div>
+                    </div>
                 </div>
             </div>
 
@@ -398,13 +391,13 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
                     <h4 className="font-semibold text-gray-600 mb-3">Filter by Type</h4>
                     <div className="space-y-2">
                         {allTags.map(tag => (
-                             <button key={tag} onClick={() => setActiveTag(tag)} className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium ${activeTag === tag ? 'bg-[#0D47A1] text-white' : 'text-gray-700 hover:bg-gray-100'}`}>
+                            <button key={tag} onClick={() => setActiveTag(tag)} className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium ${activeTag === tag ? 'bg-[#0D47A1] text-white' : 'text-gray-700 hover:bg-gray-100'}`}>
                                 {tag}
                             </button>
                         ))}
                     </div>
                 </div>
-                
+
                 {/* Documents Table */}
                 <div className="flex-1 flex flex-col overflow-hidden">
                     <div className="flex justify-between items-center mb-4">
@@ -421,13 +414,13 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
                         <table className="w-full text-left">
                             <thead className="border-b-2 border-gray-200 sticky top-0 bg-white z-10">
                                 <tr>
-                                    {[{label: 'Document Name', key: 'name'}, {label: 'Type', key: 'type'}, {label: 'Created At', key: 'createdAt'}].map(({label, key}) => (
-                                         <th key={key} className="p-3 text-sm font-semibold text-[#616161] tracking-wider">
-                                             <button onClick={() => requestSort(key as SortableKeys)} className="flex items-center space-x-1">
-                                                 <span>{label}</span>
-                                                  {sortConfig.key === key && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
-                                             </button>
-                                         </th>
+                                    {[{ label: 'Document Name', key: 'name' }, { label: 'Type', key: 'type' }, { label: 'Created At', key: 'createdAt' }].map(({ label, key }) => (
+                                        <th key={key} className="p-3 text-sm font-semibold text-[#616161] tracking-wider">
+                                            <button onClick={() => requestSort(key as SortableKeys)} className="flex items-center space-x-1">
+                                                <span>{label}</span>
+                                                {sortConfig.key === key && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                                            </button>
+                                        </th>
                                     ))}
                                     <th className="p-3 text-sm font-semibold text-[#616161] tracking-wider text-right">Actions</th>
                                 </tr>
@@ -451,13 +444,13 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
                                 ))}
                             </tbody>
                         </table>
-                         {sortedAndFilteredDocuments.length === 0 && <p className="text-center text-gray-500 py-8">No documents match the current filter.</p>}
+                        {sortedAndFilteredDocuments.length === 0 && <p className="text-center text-gray-500 py-8">No documents match the current filter.</p>}
                     </div>
                 </div>
             </div>
             {historyDoc && <HistoryModal doc={historyDoc} onClose={() => setHistoryDoc(null)} onRevert={handleRevert} />}
             {previewDoc && <EnhancedDocumentPreview doc={previewDoc} onClose={() => setPreviewDoc(null)} onSave={handleSaveFromPreview} />}
-            
+
             {/* Confirmation Dialog */}
             <ConfirmationDialog
                 isOpen={deleteConfirm.isOpen}
@@ -469,7 +462,7 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
                 onCancel={cancelDeleteDoc}
                 variant="danger"
             />
-            
+
             {/* New Document Modal */}
             <NewDocumentModal
                 isOpen={showNewDocumentModal}
