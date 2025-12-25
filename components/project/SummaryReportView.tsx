@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
-import type { Project, ChatMessage, Document, UploadedFile } from '../../types';
-import { generateProjectSummary } from '../../services/geminiService';
+import type { Project, ChatMessage, Document, UploadedFile } from '../../services/shared/types';
+import { generateProjectSummary } from '../../services/client/geminiService';
 import Icon from '../ui/Icon';
+import ConfirmationDialog from '../ui/ConfirmationDialog';
 
 // A simple markdown parser - copied from ChatView
 const SimpleMarkdown: React.FC<{ text: string }> = ({ text }) => {
@@ -46,11 +47,14 @@ interface SummaryReportViewProps {
     messages: ChatMessage[];
     documents: Document[];
     files: UploadedFile[];
+    setDocuments: React.Dispatch<React.SetStateAction<Document[]>>;
 }
 
-const SummaryReportView: React.FC<SummaryReportViewProps> = ({ project, messages, documents, files }) => {
+const SummaryReportView: React.FC<SummaryReportViewProps> = ({ project, messages, documents, files, setDocuments }) => {
     const [report, setReport] = useState<string>('');
     const [isLoading, setIsLoading] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [showSaveConfirm, setShowSaveConfirm] = useState(false);
 
     const handleGenerateReport = async () => {
         setIsLoading(true);
@@ -64,18 +68,73 @@ const SummaryReportView: React.FC<SummaryReportViewProps> = ({ project, messages
             setIsLoading(false);
         }
     };
+
+    const handleSaveAsBQDocument = () => {
+        if (!report.trim()) {
+            alert("No report to save. Please generate a summary first.");
+            return;
+        }
+        setShowSaveConfirm(true);
+    };
+
+    const confirmSaveDocument = async () => {
+        setIsSaving(true);
+        setShowSaveConfirm(false);
+        
+        try {
+            const newDocument: Document = {
+                id: `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                name: `Project Summary - ${project.name}`,
+                type: 'BQ Draft',
+                createdAt: new Date().toISOString(),
+                content: report,
+                versions: [
+                    {
+                        version: 1,
+                        createdAt: new Date().toISOString(),
+                        content: report
+                    }
+                ]
+            };
+
+            setDocuments(prev => [newDocument, ...prev]);
+            
+            // Show success message
+            alert("Project summary has been saved as a BQ Document in your Documents tab.");
+        } catch (error) {
+            console.error("Error saving document:", error);
+            alert("Failed to save the document. Please try again.");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const cancelSaveDocument = () => {
+        setShowSaveConfirm(false);
+    };
     
     return (
         <div className="bg-white rounded-xl shadow-sm p-6 h-full flex flex-col">
             <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-semibold text-[#424242]">Project Summary Report</h3>
-                <button 
-                    onClick={handleGenerateReport}
-                    disabled={isLoading}
-                    className="flex items-center space-x-2 bg-[#0D47A1] text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-800 transition-colors disabled:bg-gray-400 disabled:cursor-wait">
-                    <Icon name="dashboard" className="w-5 h-5" />
-                    <span>{isLoading ? 'Generating...' : 'Generate Summary'}</span>
-                </button>
+                <div className="flex items-center space-x-3">
+                    {report && (
+                        <button 
+                            onClick={handleSaveAsBQDocument}
+                            disabled={isSaving}
+                            className="flex items-center space-x-2 bg-[#FFC107] text-[#424242] font-medium py-2 px-4 rounded-lg hover:bg-yellow-500 transition-colors disabled:bg-gray-400 disabled:cursor-wait">
+                            <Icon name="document" className="w-5 h-5" />
+                            <span>{isSaving ? 'Saving...' : 'Save as BQ Document'}</span>
+                        </button>
+                    )}
+                    <button 
+                        onClick={handleGenerateReport}
+                        disabled={isLoading}
+                        className="flex items-center space-x-2 bg-[#0D47A1] text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-800 transition-colors disabled:bg-gray-400 disabled:cursor-wait">
+                        <Icon name="dashboard" className="w-5 h-5" />
+                        <span>{isLoading ? 'Generating...' : 'Generate Summary'}</span>
+                    </button>
+                </div>
             </div>
             <div className="flex-1 overflow-y-auto border border-gray-200 rounded-lg p-6 bg-gray-50/50">
                 {isLoading && (
@@ -95,6 +154,18 @@ const SummaryReportView: React.FC<SummaryReportViewProps> = ({ project, messages
                     </div>
                 )}
             </div>
+            
+            {/* Confirmation Dialog */}
+            <ConfirmationDialog
+                isOpen={showSaveConfirm}
+                title="Save Project Summary"
+                message={`Are you sure you want to save this project summary as a BQ Document? The document will be added to your Documents tab and can be edited later.`}
+                confirmText="Save Document"
+                cancelText="Cancel"
+                onConfirm={confirmSaveDocument}
+                onCancel={cancelSaveDocument}
+                variant="info"
+            />
         </div>
     );
 };

@@ -1,82 +1,82 @@
 import React, { useState, useRef, useEffect } from 'react';
-import type { Project, ChatMessage, Document } from '../../types';
-import { generateChatResponse } from '../../services/geminiService';
+import type { Project, ChatMessage, Document } from '../../services/shared/types';
+import { generateChatResponse } from '../../services/client/geminiService';
 import Icon from '../ui/Icon';
 import Logo from '../ui/Logo';
 
 // A simple markdown parser
 const SimpleMarkdown: React.FC<{ text: string }> = ({ text }) => {
-  const formatText = (txt: string) => {
-    return txt
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
-      .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic
-      .replace(/`([^`]+)`/g, '<code class="bg-gray-200 text-sm rounded px-1 py-0.5">$1</code>'); // Inline code
-  };
+    const formatText = (txt: string) => {
+        return txt
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+            .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic
+            .replace(/`([^`]+)`/g, '<code class="bg-gray-200 text-sm rounded px-1 py-0.5">$1</code>'); // Inline code
+    };
 
-  const lines = text.split('\n');
-  const elements = lines.map((line, index) => {
-    if (line.startsWith('### ')) {
-      return <h3 key={index} className="text-lg font-semibold mt-4 mb-2" dangerouslySetInnerHTML={{ __html: formatText(line.substring(4)) }} />;
-    }
-    if (line.startsWith('## ')) {
-      return <h2 key={index} className="text-xl font-bold mt-6 mb-3" dangerouslySetInnerHTML={{ __html: formatText(line.substring(3)) }} />;
-    }
-    if (line.startsWith('# ')) {
-      return <h1 key={index} className="text-2xl font-bold mt-8 mb-4" dangerouslySetInnerHTML={{ __html: formatText(line.substring(2)) }} />;
-    }
-    if (line.startsWith('* ')) {
-      return <li key={index} className="ml-5 list-disc" dangerouslySetInnerHTML={{ __html: formatText(line.substring(2)) }} />;
-    }
-    if (line.match(/^\d+\.\s/)) {
-        const content = line.replace(/^\d+\.\s/, '');
-        return <li key={index} className="ml-5 list-decimal" dangerouslySetInnerHTML={{ __html: formatText(content) }} />;
-    }
-    if (line.trim() === '') {
-      return <br key={index} />;
-    }
-    return <p key={index} dangerouslySetInnerHTML={{ __html: formatText(line) }} />;
-  });
+    const lines = text.split('\n');
+    const elements = lines.map((line, index) => {
+        if (line.startsWith('### ')) {
+            return <h3 key={index} className="text-lg font-semibold mt-4 mb-2" dangerouslySetInnerHTML={{ __html: formatText(line.substring(4)) }} />;
+        }
+        if (line.startsWith('## ')) {
+            return <h2 key={index} className="text-xl font-bold mt-6 mb-3" dangerouslySetInnerHTML={{ __html: formatText(line.substring(3)) }} />;
+        }
+        if (line.startsWith('# ')) {
+            return <h1 key={index} className="text-2xl font-bold mt-8 mb-4" dangerouslySetInnerHTML={{ __html: formatText(line.substring(2)) }} />;
+        }
+        if (line.startsWith('* ')) {
+            return <li key={index} className="ml-5 list-disc" dangerouslySetInnerHTML={{ __html: formatText(line.substring(2)) }} />;
+        }
+        if (line.match(/^\d+\.\s/)) {
+            const content = line.replace(/^\d+\.\s/, '');
+            return <li key={index} className="ml-5 list-decimal" dangerouslySetInnerHTML={{ __html: formatText(content) }} />;
+        }
+        if (line.trim() === '') {
+            return <br key={index} />;
+        }
+        return <p key={index} dangerouslySetInnerHTML={{ __html: formatText(line) }} />;
+    });
 
-  return <div className="prose prose-sm max-w-none">{elements}</div>;
+    return <div className="prose prose-sm max-w-none">{elements}</div>;
 };
 
 
 const ChatBubble: React.FC<{ message: ChatMessage }> = ({ message }) => {
-  const isUser = message.sender === 'user';
-  if (message.isTyping) {
-    return (
-        <div className="flex items-start space-x-3 py-4">
-            <div className="w-10 h-10 rounded-full bg-[#0D47A1]/20 flex-shrink-0 flex items-center justify-center">
-                <Icon name="chat" className="w-5 h-5 text-[#0D47A1]" />
-            </div>
-            <div className="bg-white p-4 rounded-lg rounded-tl-none shadow-sm animate-pulse">
-                <div className="flex items-center space-x-1">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0s'}}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+    const isUser = message.sender === 'user';
+    if (message.isTyping) {
+        return (
+            <div className="flex items-start space-x-3 py-4">
+                <div className="w-10 h-10 rounded-full bg-[#0D47A1]/20 flex-shrink-0 flex items-center justify-center">
+                    <Icon name="chat" className="w-5 h-5 text-[#0D47A1]" />
+                </div>
+                <div className="bg-white p-4 rounded-lg rounded-tl-none shadow-sm animate-pulse">
+                    <div className="flex items-center space-x-1">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                    </div>
                 </div>
             </div>
-      </div>
-    );
-  }
+        );
+    }
 
-  return (
-    <div className={`flex items-start space-x-3 py-4 ${isUser ? 'justify-end' : ''}`}>
-      {!isUser && (
-        <div className="w-10 h-10 rounded-full bg-[#0D47A1]/20 flex-shrink-0 flex items-center justify-center">
-          <Icon name="chat" className="w-5 h-5 text-[#0D47A1]" />
+    return (
+        <div className={`flex items-start space-x-3 py-4 ${isUser ? 'justify-end' : ''}`}>
+            {!isUser && (
+                <div className="w-10 h-10 rounded-full bg-[#0D47A1]/20 flex-shrink-0 flex items-center justify-center">
+                    <Icon name="chat" className="w-5 h-5 text-[#0D47A1]" />
+                </div>
+            )}
+            <div className={`max-w-xl p-4 rounded-lg shadow-sm ${isUser ? 'bg-[#0D47A1] text-white rounded-br-none' : 'bg-white text-[#424242] rounded-tl-none'}`}>
+                <SimpleMarkdown text={message.text} />
+            </div>
+            {isUser && (
+                <div className="w-10 h-10 rounded-full bg-[#FFC107]/80 flex-shrink-0 flex items-center justify-center text-[#424242] font-bold">
+                    P
+                </div>
+            )}
         </div>
-      )}
-      <div className={`max-w-xl p-4 rounded-lg shadow-sm ${isUser ? 'bg-[#0D47A1] text-white rounded-br-none' : 'bg-white text-[#424242] rounded-tl-none'}`}>
-        <SimpleMarkdown text={message.text} />
-      </div>
-       {isUser && (
-        <div className="w-10 h-10 rounded-full bg-[#FFC107]/80 flex-shrink-0 flex items-center justify-center text-[#424242] font-bold">
-            P
-        </div>
-      )}
-    </div>
-  );
+    );
 };
 
 
@@ -168,7 +168,7 @@ const ChatView: React.FC<ChatViewProps> = ({ project, messages, setMessages, set
             sender: 'user',
             text: input
         };
-        
+
         // FIX: Added missing 'text' property to conform to ChatMessage type.
         setMessages(prev => [...prev, newUserMessage, { id: 'typing', sender: 'ai', text: '', isTyping: true }]);
         setInput('');
@@ -200,13 +200,13 @@ const ChatView: React.FC<ChatViewProps> = ({ project, messages, setMessages, set
             alert("Cannot export an empty chat.");
             return;
         }
-    
+
         const chatContent = relevantMessages
-            .map(msg => `### ${msg.sender === 'user' ? 'User' : 'Q-Sci'}\n\n${msg.text}`)
+            .map(msg => `### ${msg.sender === 'user' ? 'User' : 'Metrrik'}\n\n${msg.text}`)
             .join('\n\n---\n\n');
-        
+
         const fullContent = `# ${title}\n\n${chatContent}`;
-        
+
         const newDoc: Document = {
             id: `doc-${Date.now()}`,
             name: title,
@@ -216,7 +216,7 @@ const ChatView: React.FC<ChatViewProps> = ({ project, messages, setMessages, set
             content: fullContent,
             versions: [{ version: 1, createdAt: new Date().toISOString(), content: fullContent }]
         };
-    
+
         setDocuments(prev => [newDoc, ...prev]);
         setIsExportModalOpen(false);
         alert(`Document "${title}" has been saved to the Documents tab.`);
@@ -236,13 +236,13 @@ const ChatView: React.FC<ChatViewProps> = ({ project, messages, setMessages, set
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                        placeholder={isCompact ? "Ask Q-Sci anything..." : "Ask for a preliminary cost estimate for a 4-bedroom maisonette in Kilimani..."}
+                        placeholder={isCompact ? "Ask Metrrik anything..." : "Ask for a preliminary cost estimate for a 4-bedroom maisonette in Kilimani..."}
                         className={`w-full ${isCompact ? 'p-2 pr-20' : 'p-4 pr-28'} border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#29B6F6] focus:border-[#29B6F6] transition resize-none`}
                         rows={isCompact ? 1 : 2}
                         disabled={isLoading}
                     />
                     <div className={`absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1`}>
-                         {!isCompact && (
+                        {!isCompact && (
                             <button
                                 onClick={() => setIsExportModalOpen(true)}
                                 disabled={isLoading}

@@ -4,33 +4,33 @@ import type { ChatMessage, Document, UploadedFile, AnalyzedBQ } from '../types';
 
 // Ensure GEMINI_API_KEY is available. In a real app, this would be more robustly handled.
 if (!process.env.GEMINI_API_KEY) {
-  throw new Error("GEMINI_API_KEY environment variable not set.");
+    throw new Error("GEMINI_API_KEY environment variable not set.");
 }
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-const SYSTEM_INSTRUCTION = `You are Q-Sci, an expert AI assistant for Quantity Surveyors in Kenya. Your role is to be an intelligent co-pilot, helping with tasks like creating cost estimates, drafting Bills of Quantities (BQs), and generating professional construction documents.
+const SYSTEM_INSTRUCTION = `You are Metrrik, an expert AI assistant for Quantity Surveyors in Kenya. Your role is to be an intelligent co-pilot, helping with tasks like creating cost estimates, drafting Bills of Quantities (BQs), and generating professional construction documents.
 - When asked for a cost estimate, provide a clear, structured breakdown. Use realistic, localized costs for Kenya (e.g., Nairobi, Mombasa) where possible. Mention that these are preliminary estimates.
 - When analyzing drawings, identify key architectural elements and provide estimated quantities.
 - Your tone should be professional, intelligent, clear, and supportive.
 - All responses should be formatted using markdown for clarity (e.g., headings, bold text, lists, tables).
-- Do not mention you are an AI. Act as the Q-Sci tool.`;
+- Do not mention you are an AI. Act as the Metrrik tool.`;
 
 export const generateChatResponse = async (prompt: string): Promise<string> => {
-  try {
-    const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        // FIX: Simplified `contents` to a plain string for a single-turn text prompt, following API guidelines.
-        contents: prompt,
-        config: {
-            systemInstruction: SYSTEM_INSTRUCTION,
-        },
-    });
-    return response.text;
-  } catch (error) {
-    console.error("Error generating chat response:", error);
-    return "Sorry, I encountered an error while processing your request. Please try again.";
-  }
+    try {
+        const response: GenerateContentResponse = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            // FIX: Simplified `contents` to a plain string for a single-turn text prompt, following API guidelines.
+            contents: prompt,
+            config: {
+                systemInstruction: SYSTEM_INSTRUCTION,
+            },
+        });
+        return response.text;
+    } catch (error) {
+        console.error("Error generating chat response:", error);
+        return "Sorry, I encountered an error while processing your request. Please try again.";
+    }
 };
 
 export const analyzeFloorPlan = async (imageData: string, mimeType: string): Promise<string> => {
@@ -57,7 +57,7 @@ export const analyzeFloorPlan = async (imageData: string, mimeType: string): Pro
             The final output MUST be a single, valid JSON object matching the provided schema.
             `
         };
-        
+
         const responseSchema = {
             type: Type.OBJECT,
             properties: {
@@ -67,7 +67,7 @@ export const analyzeFloorPlan = async (imageData: string, mimeType: string): Pro
                         totalEstimatedCostKES: { type: Type.NUMBER },
                         totalWastageCostKES: { type: Type.NUMBER },
                         confidenceScore: { type: Type.NUMBER, description: "AI confidence in the estimate, from 0.0 to 1.0" },
-                        regionalPricingDifferences: { 
+                        regionalPricingDifferences: {
                             type: Type.ARRAY,
                             description: "Analysis of cost differences in major Kenyan cities.",
                             items: {
@@ -135,9 +135,35 @@ export const analyzeFloorPlan = async (imageData: string, mimeType: string): Pro
 
         // The response text will be a stringified JSON.
         return response.text;
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error analyzing floor plan:", error);
-        return JSON.stringify({ error: "Failed to analyze the drawing. The AI model could not process the request. Please ensure the uploaded image is a clear architectural drawing and try again." });
+
+        // Handle specific API errors
+        if (error.message && error.message.includes('API key not valid')) {
+            return JSON.stringify({
+                error: {
+                    message: "Invalid API key. Please check your Gemini API configuration in your environment variables.",
+                    code: "INVALID_API_KEY"
+                }
+            });
+        }
+
+        if (error.message && error.message.includes('quota')) {
+            return JSON.stringify({
+                error: {
+                    message: "API quota exceeded. Please check your Gemini API usage limits.",
+                    code: "QUOTA_EXCEEDED"
+                }
+            });
+        }
+
+        // Generic error response
+        return JSON.stringify({
+            error: {
+                message: "Failed to analyze the drawing. Please ensure the uploaded image is a clear architectural drawing and try again.",
+                code: "ANALYSIS_FAILED"
+            }
+        });
     }
 };
 
@@ -195,7 +221,7 @@ Format the output in clear, professional markdown.
 };
 
 export const generateDocumentContent = async (prompt: string, type: Document['type']): Promise<string> => {
-  const specializedPrompt = `
+    const specializedPrompt = `
     Based on the user's request, generate a professional '${type}' document.
     User's request: "${prompt}"
     
@@ -203,17 +229,17 @@ export const generateDocumentContent = async (prompt: string, type: Document['ty
     The content should be well-written, accurate, and ready for client presentation.
     Format the entire output using markdown.
   `;
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: specializedPrompt,
-      config: {
-        systemInstruction: `You are Q-Sci, an expert AI assistant for Quantity Surveyors in Kenya. Your task is to generate high-quality construction documents. Your tone is professional and authoritative.`,
-      },
-    });
-    return response.text;
-  } catch (error) {
-    console.error("Error generating document:", error);
-    return "Sorry, an error occurred while generating the document. Please check your prompt and try again.";
-  }
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: specializedPrompt,
+            config: {
+                systemInstruction: `You are Metrrik, an expert AI assistant for Quantity Surveyors in Kenya. Your task is to generate high-quality construction documents. Your tone is professional and authoritative.`,
+            },
+        });
+        return response.text;
+    } catch (error) {
+        console.error("Error generating document:", error);
+        return "Sorry, an error occurred while generating the document. Please check your prompt and try again.";
+    }
 };

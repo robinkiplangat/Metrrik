@@ -1,12 +1,136 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import type { Project, Document, Template, DocumentVersion } from '../../types';
-import { generateDocumentContent } from '../../services/geminiService';
+import type { Project, Document, Template, DocumentVersion } from '../../services/shared/types';
+import { generateDocumentContent } from '../../services/client/geminiService';
 import Icon from '../ui/Icon';
+import ConfirmationDialog from '../ui/ConfirmationDialog';
+import NewDocumentModal from './NewDocumentModal';
+import EnhancedDocumentPreview from '../ui/EnhancedDocumentPreview';
 
 const initialDocuments: Document[] = [
-    { id: 'doc-1', name: 'Preliminary Cost Estimate', type: 'Estimate', createdAt: '2024-07-22T11:30:00Z', content: 'Initial costings for the Runda project, covering foundation and structural work.', versions: [{version: 1, createdAt: '2024-07-22T11:30:00Z', content: 'Initial costings...' }] },
-    { id: 'doc-2', name: 'Client Proposal V1', type: 'Proposal', createdAt: '2024-07-22T15:00:00Z', content: 'This document outlines the scope of work, timeline, and payment schedule for the Kilimani Maisonette project.', versions: [{version: 1, createdAt: '2024-07-22T15:00:00Z', content: 'Proposal details...' }] },
-    { id: 'doc-3', name: 'Floor Plan BQ Draft', type: 'BQ Draft', createdAt: '2024-07-23T09:00:00Z', content: 'A draft Bill of Quantities derived from the initial floor plan analysis.', versions: [{version: 1, createdAt: '2024-07-23T09:00:00Z', content: 'BQ draft from plan...' }] },
+    {
+        id: 'doc-1',
+        name: 'Preliminary Cost Estimate',
+        type: 'Estimate',
+        createdAt: '2024-07-22T11:30:00Z',
+        content: `# Preliminary Cost Estimate
+
+## Project Summary
+- **Project Name:** Runda Residential Development
+- **Client:** Mr. & Mrs. Omondi
+- **Location:** Runda, Nairobi
+- **Estimate Date:** July 22, 2024
+
+## Cost Breakdown
+
+### Substructure
+| Item | Description | Unit | Quantity | Rate (KES) | Total (KES) |
+|------|-------------|------|----------|------------|-------------|
+| 1.1 | Excavation for foundations | m³ | 45.5 | 2,500 | 113,750 |
+| 1.2 | Foundation concrete (1:2:4) | m³ | 12.8 | 8,500 | 108,800 |
+| 1.3 | Reinforcement steel | kg | 1,200 | 180 | 216,000 |
+
+**Substructure Subtotal:** KES 438,550
+
+### Superstructure
+| Item | Description | Unit | Quantity | Rate (KES) | Total (KES) |
+|------|-------------|------|----------|------------|-------------|
+| 2.1 | Blockwork (6 inch) | m² | 180 | 1,200 | 216,000 |
+| 2.2 | Roofing (GCI sheets) | m² | 120 | 2,800 | 336,000 |
+| 2.3 | Windows (Aluminum) | No. | 8 | 25,000 | 200,000 |
+
+**Superstructure Subtotal:** KES 752,000
+
+## Summary
+- **Total Estimated Cost:** KES 1,190,550
+- **Contingency (10%):** KES 119,055
+- **Grand Total:** KES 1,309,605
+
+> **Note:** This is a preliminary estimate based on current market rates. Final costs may vary based on actual site conditions and material availability.
+
+## Next Steps
+1. Client review and approval
+2. Detailed design development
+3. Final cost estimation
+4. Construction planning`,
+        versions: [{ version: 1, createdAt: '2024-07-22T11:30:00Z', content: 'Initial costings...' }]
+    },
+    {
+        id: 'doc-2',
+        name: 'Client Proposal V1',
+        type: 'Proposal',
+        createdAt: '2024-07-22T15:00:00Z',
+        content: `# Client Proposal
+
+## Project Overview
+This document outlines the scope of work, timeline, and payment schedule for the **Kilimani Maisonette** project.
+
+### Scope of Work
+- Architectural design and planning
+- Structural engineering
+- Quantity surveying and cost estimation
+- Project management and supervision
+
+### Timeline
+- **Phase 1:** Design and Planning (4 weeks)
+- **Phase 2:** Documentation (2 weeks)  
+- **Phase 3:** Construction (16 weeks)
+
+### Payment Schedule
+- 30% upon contract signing
+- 40% at project midpoint
+- 30% upon completion
+
+---
+
+*For any questions, please contact our team.*`,
+        versions: [{ version: 1, createdAt: '2024-07-22T15:00:00Z', content: 'Proposal details...' }]
+    },
+    {
+        id: 'doc-3',
+        name: 'Floor Plan BQ Draft',
+        type: 'BQ Draft',
+        createdAt: '2024-07-23T09:00:00Z',
+        content: `# Bill of Quantities - Floor Plan Analysis
+
+## AI-Generated Analysis
+
+### Summary
+- **Total Estimated Cost:** KES 2,450,000
+- **AI Confidence Score:** 85%
+- **Analysis Date:** July 23, 2024
+
+### Key Findings
+
+#### Structural Elements
+- **Foundation:** Strip foundation with reinforced concrete
+- **Walls:** 6-inch blockwork with platform finish
+- **Roof:** GCI roofing with timber trusses
+
+#### Cost Breakdown
+| Category | Amount (KES) | Percentage |
+|----------|--------------|------------|
+| Substructure | 650,000 | 26.5% |
+| Superstructure | 1,200,000 | 49.0% |
+| Finishes | 400,000 | 16.3% |
+| Services | 200,000 | 8.2% |
+
+### Recommendations
+1. **Material Optimization:** Consider alternative roofing materials
+2. **Cost Savings:** Bulk purchasing for major materials
+3. **Timeline:** Allow 20% buffer for weather delays
+
+\`\`\`javascript
+// Sample calculation function
+function calculateTotalCost(items) {
+  return items.reduce((total, item) => {
+    return total + (item.quantity * item.rate);
+  }, 0);
+}
+\`\`\`
+
+> **Disclaimer:** This analysis is based on AI interpretation of the provided floor plan. Manual verification is recommended.`,
+        versions: [{ version: 1, createdAt: '2024-07-23T09:00:00Z', content: 'BQ draft from plan...' }]
+    },
 ];
 
 const documentTemplates: Template[] = [
@@ -20,7 +144,6 @@ const ALL_DOC_TYPES: Document['type'][] = ['Estimate', 'Proposal', 'BQ Draft', '
 
 type SortableKeys = keyof Pick<Document, 'name' | 'type' | 'createdAt'>;
 
-// ... (HistoryModal and PreviewModal components remain unchanged) ...
 interface HistoryModalProps {
     doc: Document;
     onClose: () => void;
@@ -54,77 +177,8 @@ const HistoryModal: React.FC<HistoryModalProps> = ({ doc, onClose, onRevert }) =
     </div>
 );
 
-
-interface PreviewModalProps {
-    doc: Document;
-    onClose: () => void;
-    onSave: (docId: string, newContent: string, newType: Document['type']) => void;
-}
-
-const PreviewModal: React.FC<PreviewModalProps> = ({ doc, onClose, onSave }) => {
-    const [isEditing, setIsEditing] = useState(false);
-    const [editedContent, setEditedContent] = useState(doc.content);
-    const [editedType, setEditedType] = useState(doc.type);
-
-    const handleSave = () => {
-        onSave(doc.id, editedContent, editedType);
-        setIsEditing(false);
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-40 p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col">
-                <div className="p-4 border-b flex justify-between items-center flex-shrink-0">
-                    <h3 className="text-xl font-semibold text-[#424242]">{doc.name}</h3>
-                    <div className="flex items-center space-x-3">
-                        {!isEditing && (
-                            <button onClick={() => setIsEditing(true)} className="flex items-center space-x-2 text-gray-600 hover:text-blue-600">
-                                <Icon name="settings" className="w-5 h-5" />
-                                <span>Edit</span>
-                            </button>
-                        )}
-                        <button onClick={onClose} className="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
-                    </div>
-                </div>
-                <div className="p-6 overflow-y-auto flex-grow">
-                    {isEditing ? (
-                        <div className="flex flex-col h-full space-y-4">
-                            <div>
-                                <label className="font-medium text-sm text-gray-600">Document Type</label>
-                                <select value={editedType} onChange={(e) => setEditedType(e.target.value as Document['type'])} className="w-full mt-1 p-2 border border-gray-300 rounded-md">
-                                    {ALL_DOC_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
-                                </select>
-                            </div>
-                            <textarea
-                                value={editedContent}
-                                onChange={(e) => setEditedContent(e.target.value)}
-                                className="w-full h-full p-3 border border-gray-300 rounded-md flex-grow resize-none"
-                            />
-                        </div>
-                    ) : (
-                        <div className="prose max-w-none">
-                            <pre className="whitespace-pre-wrap font-sans">{doc.content}</pre>
-                        </div>
-                    )}
-                </div>
-                <div className="p-4 bg-gray-50 border-t rounded-b-xl flex justify-end space-x-3 flex-shrink-0">
-                     {isEditing ? (
-                        <>
-                            <button onClick={() => setIsEditing(false)} className="px-4 py-2 bg-gray-200 text-[#424242] rounded-lg hover:bg-gray-300">Cancel</button>
-                            <button onClick={handleSave} className="px-4 py-2 bg-[#0D47A1] text-white rounded-lg hover:bg-blue-800">Save Changes</button>
-                        </>
-                    ) : (
-                        <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-[#424242] rounded-lg hover:bg-gray-300">Close</button>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-};
-
-
 const getTypeColorClasses = (type: Document['type']) => {
-    switch(type) {
+    switch (type) {
         case 'Estimate': return 'bg-blue-100 text-blue-800';
         case 'Proposal': return 'bg-green-100 text-green-800';
         case 'BQ Draft': return 'bg-yellow-100 text-yellow-800';
@@ -148,13 +202,12 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
     const [aiDocPrompt, setAiDocPrompt] = useState('');
     const [aiDocType, setAiDocType] = useState<Document['type']>('Estimate');
     const [isGenerating, setIsGenerating] = useState(false);
-
-    // Dummy state for custom templates, in a real app this would be more robust
-    const [customTemplates, setCustomTemplates] = useState<Template[]>([]);
+    const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; doc: Document | null }>({ isOpen: false, doc: null });
+    const [showNewDocumentModal, setShowNewDocumentModal] = useState(false);
 
     useEffect(() => {
         try {
-            const savedDocsRaw = localStorage.getItem(`qsci-docs-${project.id}`);
+            const savedDocsRaw = localStorage.getItem(`metrrik-docs-${project.id}`);
             if (savedDocsRaw) {
                 const savedDocs = JSON.parse(savedDocsRaw);
                 const docsWithVersions = savedDocs.map((d: any) => d.versions ? d : { ...d, versions: [{ version: 1, createdAt: d.createdAt, content: d.content }] });
@@ -170,10 +223,10 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
 
     useEffect(() => {
         if (documents.length > 0) {
-            localStorage.setItem(`qsci-docs-${project.id}`, JSON.stringify(documents));
+            localStorage.setItem(`metrrik-docs-${project.id}`, JSON.stringify(documents));
         }
     }, [documents, project.id]);
-    
+
     const sortedAndFilteredDocuments = useMemo(() => {
         let sortableItems = [...documents];
         if (activeTag !== 'All') {
@@ -257,10 +310,23 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
         setHistoryDoc(null);
     };
 
-    const handleDeleteDoc = (docId: string) => {
-        if (window.confirm("Are you sure you want to delete this document? This action cannot be undone.")) {
-            setDocuments(docs => docs.filter(d => d.id !== docId));
+    const handleDeleteDoc = (doc: Document) => {
+        setDeleteConfirm({ isOpen: true, doc });
+    };
+
+    const confirmDeleteDoc = () => {
+        if (deleteConfirm.doc) {
+            setDocuments(docs => docs.filter(d => d.id !== deleteConfirm.doc!.id));
         }
+        setDeleteConfirm({ isOpen: false, doc: null });
+    };
+
+    const cancelDeleteDoc = () => {
+        setDeleteConfirm({ isOpen: false, doc: null });
+    };
+
+    const handleCreateNewDocument = (newDocument: Document) => {
+        setDocuments(prev => [newDocument, ...prev]);
     };
 
     const handleSaveFromPreview = (docId: string, newContent: string, newType: Document['type']) => {
@@ -287,14 +353,14 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
 
     return (
         <div className="bg-white rounded-xl shadow-sm p-6 h-full flex flex-col space-y-6 overflow-hidden">
-             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                 {/* AI Generation */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* AI Generation */}
                 <div className="space-y-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
                     <h3 className="text-lg font-semibold text-[#0D47A1]">Generate Document with AI</h3>
                     <select value={aiDocType} onChange={e => setAiDocType(e.target.value as Document['type'])} className="w-full p-2 border border-gray-300 rounded-md">
                         {ALL_DOC_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
                     </select>
-                    <textarea 
+                    <textarea
                         value={aiDocPrompt}
                         onChange={e => setAiDocPrompt(e.target.value)}
                         placeholder={`e.g., "A preliminary cost estimate for a 3-bedroom bungalow..."`}
@@ -305,17 +371,17 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
                         {isGenerating ? 'Generating...' : 'Generate'}
                     </button>
                 </div>
-                 {/* Templates */}
+                {/* Templates */}
                 <div className="space-y-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                     <h3 className="text-lg font-semibold text-[#424242]">Create from Template</h3>
-                     <div className="grid grid-cols-2 gap-3">
+                    <h3 className="text-lg font-semibold text-[#424242]">Create from Template</h3>
+                    <div className="grid grid-cols-2 gap-3">
                         {documentTemplates.map(template => (
                             <div key={template.id} onClick={() => createFromTemplate(template)} className="bg-white p-3 rounded-md hover:bg-gray-100 hover:shadow-sm transition-all cursor-pointer border">
-                               <h4 className="font-bold text-sm text-[#0D47A1]">{template.name}</h4>
-                               <p className="text-xs text-gray-600 mt-1 truncate">{template.description}</p>
+                                <h4 className="font-bold text-sm text-[#0D47A1]">{template.name}</h4>
+                                <p className="text-xs text-gray-600 mt-1 truncate">{template.description}</p>
                             </div>
                         ))}
-                     </div>
+                    </div>
                 </div>
             </div>
 
@@ -325,27 +391,36 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
                     <h4 className="font-semibold text-gray-600 mb-3">Filter by Type</h4>
                     <div className="space-y-2">
                         {allTags.map(tag => (
-                             <button key={tag} onClick={() => setActiveTag(tag)} className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium ${activeTag === tag ? 'bg-[#0D47A1] text-white' : 'text-gray-700 hover:bg-gray-100'}`}>
+                            <button key={tag} onClick={() => setActiveTag(tag)} className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium ${activeTag === tag ? 'bg-[#0D47A1] text-white' : 'text-gray-700 hover:bg-gray-100'}`}>
                                 {tag}
                             </button>
                         ))}
                     </div>
                 </div>
-                
+
                 {/* Documents Table */}
                 <div className="flex-1 flex flex-col overflow-hidden">
-                    <h3 className="text-xl font-semibold text-[#424242] mb-4">Project Documents</h3>
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xl font-semibold text-[#424242]">Project Documents</h3>
+                        <button
+                            onClick={() => setShowNewDocumentModal(true)}
+                            className="flex items-center space-x-2 px-4 py-2 bg-[#0D47A1] text-white rounded-lg hover:bg-blue-800 transition-colors"
+                        >
+                            <Icon name="document" className="w-4 h-4" />
+                            <span>New Document</span>
+                        </button>
+                    </div>
                     <div className="overflow-y-auto">
                         <table className="w-full text-left">
                             <thead className="border-b-2 border-gray-200 sticky top-0 bg-white z-10">
                                 <tr>
-                                    {[{label: 'Document Name', key: 'name'}, {label: 'Type', key: 'type'}, {label: 'Created At', key: 'createdAt'}].map(({label, key}) => (
-                                         <th key={key} className="p-3 text-sm font-semibold text-[#616161] tracking-wider">
-                                             <button onClick={() => requestSort(key as SortableKeys)} className="flex items-center space-x-1">
-                                                 <span>{label}</span>
-                                                  {sortConfig.key === key && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
-                                             </button>
-                                         </th>
+                                    {[{ label: 'Document Name', key: 'name' }, { label: 'Type', key: 'type' }, { label: 'Created At', key: 'createdAt' }].map(({ label, key }) => (
+                                        <th key={key} className="p-3 text-sm font-semibold text-[#616161] tracking-wider">
+                                            <button onClick={() => requestSort(key as SortableKeys)} className="flex items-center space-x-1">
+                                                <span>{label}</span>
+                                                {sortConfig.key === key && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                                            </button>
+                                        </th>
                                     ))}
                                     <th className="p-3 text-sm font-semibold text-[#616161] tracking-wider text-right">Actions</th>
                                 </tr>
@@ -363,18 +438,37 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ project, documents, setDo
                                         <td className="p-3 text-right space-x-3">
                                             <button onClick={() => setPreviewDoc(doc)} className="font-medium text-[#0D47A1] hover:underline">Preview</button>
                                             <button onClick={() => setHistoryDoc(doc)} className="font-medium text-[#0D47A1] hover:underline">History</button>
-                                            <button onClick={() => handleDeleteDoc(doc.id)} className="font-medium text-red-600 hover:underline">Delete</button>
+                                            <button onClick={() => handleDeleteDoc(doc)} className="font-medium text-red-600 hover:underline">Delete</button>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
-                         {sortedAndFilteredDocuments.length === 0 && <p className="text-center text-gray-500 py-8">No documents match the current filter.</p>}
+                        {sortedAndFilteredDocuments.length === 0 && <p className="text-center text-gray-500 py-8">No documents match the current filter.</p>}
                     </div>
                 </div>
             </div>
             {historyDoc && <HistoryModal doc={historyDoc} onClose={() => setHistoryDoc(null)} onRevert={handleRevert} />}
-            {previewDoc && <PreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} onSave={handleSaveFromPreview} />}
+            {previewDoc && <EnhancedDocumentPreview doc={previewDoc} onClose={() => setPreviewDoc(null)} onSave={handleSaveFromPreview} />}
+
+            {/* Confirmation Dialog */}
+            <ConfirmationDialog
+                isOpen={deleteConfirm.isOpen}
+                title="Delete Document"
+                message={`Are you sure you want to delete "${deleteConfirm.doc?.name}"? This action cannot be undone and will permanently remove the document and all its versions.`}
+                confirmText="Delete Document"
+                cancelText="Cancel"
+                onConfirm={confirmDeleteDoc}
+                onCancel={cancelDeleteDoc}
+                variant="danger"
+            />
+
+            {/* New Document Modal */}
+            <NewDocumentModal
+                isOpen={showNewDocumentModal}
+                onClose={() => setShowNewDocumentModal(false)}
+                onCreateDocument={handleCreateNewDocument}
+            />
         </div>
     );
 };

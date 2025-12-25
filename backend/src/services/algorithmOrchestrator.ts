@@ -1,0 +1,633 @@
+import { EventEmitter } from 'events';
+import { logger } from '../utils/logger';
+import { v4 as uuidv4 } from 'uuid';
+import { performance } from 'perf_hooks';
+
+// Algorithm execution context and metadata
+export interface AlgorithmContext {
+  id: string;
+  correlationId: string;
+  userId: string;
+  projectId?: string;
+  timestamp: Date;
+  priority: AlgorithmPriority;
+  timeout: number;
+  retryCount: number;
+  maxRetries: number;
+  metadata: Record<string, any>;
+}
+
+// Algorithm execution result
+export interface AlgorithmResult<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  executionTime: number;
+  algorithmVersion: string;
+  confidence?: number;
+  metadata: Record<string, any>;
+}
+
+// Algorithm definition
+export interface AlgorithmDefinition {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  category: AlgorithmCategory;
+  inputSchema: any;
+  outputSchema: any;
+  timeout: number;
+  maxRetries: number;
+  priority: AlgorithmPriority;
+  dependencies: string[];
+  tags: string[];
+  isActive: boolean;
+  performanceMetrics: AlgorithmMetrics;
+}
+
+// Algorithm categories
+export enum AlgorithmCategory {
+  COST_ESTIMATION = 'cost_estimation',
+  FLOOR_PLAN_ANALYSIS = 'floor_plan_analysis',
+  DOCUMENT_GENERATION = 'document_generation',
+  QUANTITY_TAKEOFF = 'quantity_takeoff',
+  MATERIAL_OPTIMIZATION = 'material_optimization',
+  SCHEDULE_ANALYSIS = 'schedule_analysis',
+  RISK_ASSESSMENT = 'risk_assessment',
+  QUALITY_CONTROL = 'quality_control',
+}
+
+// Algorithm priorities
+export enum AlgorithmPriority {
+  CRITICAL = 1,
+  HIGH = 2,
+  NORMAL = 3,
+  LOW = 4,
+  BACKGROUND = 5,
+}
+
+// Performance metrics
+export interface AlgorithmMetrics {
+  totalExecutions: number;
+  successfulExecutions: number;
+  failedExecutions: number;
+  averageExecutionTime: number;
+  p95ExecutionTime: number;
+  p99ExecutionTime: number;
+  lastExecutionTime: Date;
+  errorRate: number;
+  throughput: number; // executions per minute
+}
+
+// Algorithm execution strategy
+export interface ExecutionStrategy {
+  type: 'sequential' | 'parallel' | 'pipeline' | 'conditional';
+  algorithms: string[];
+  conditions?: Record<string, any>;
+  fallback?: string;
+}
+
+// Circuit Breaker implementation
+class CircuitBreaker {
+  private failures = 0;
+  private lastFailureTime = 0;
+  private state: 'CLOSED' | 'OPEN' | 'HALF_OPEN' = 'CLOSED';
+
+  constructor(private config: {
+    failureThreshold: number;
+    recoveryTimeout: number;
+    monitoringPeriod: number;
+  }) {}
+
+  canExecute(): boolean {
+    if (this.state === 'CLOSED') return true;
+    if (this.state === 'OPEN') {
+      if (Date.now() - this.lastFailureTime > this.config.recoveryTimeout) {
+        this.state = 'HALF_OPEN';
+        return true;
+      }
+      return false;
+    }
+    return true; // HALF_OPEN
+  }
+
+  recordResult(success: boolean): void {
+    if (success) {
+      this.failures = 0;
+      this.state = 'CLOSED';
+    } else {
+      this.failures++;
+      this.lastFailureTime = Date.now();
+      if (this.failures >= this.config.failureThreshold) {
+        this.state = 'OPEN';
+      }
+    }
+  }
+}
+
+// Load Balancer implementation
+class LoadBalancer {
+  private currentIndex = 0;
+  private instances: string[] = [];
+
+  addInstance(instanceId: string): void {
+    if (!this.instances.includes(instanceId)) {
+      this.instances.push(instanceId);
+    }
+  }
+
+  getNextInstance(): string | null {
+    if (this.instances.length === 0) return null;
+    const instance = this.instances[this.currentIndex];
+    this.currentIndex = (this.currentIndex + 1) % this.instances.length;
+    return instance;
+  }
+}
+
+// World-class Algorithm Orchestrator
+export class AlgorithmOrchestrator extends EventEmitter {
+  private algorithms: Map<string, AlgorithmDefinition> = new Map();
+  private executionQueue: Map<AlgorithmPriority, AlgorithmContext[]> = new Map();
+  private activeExecutions: Map<string, AlgorithmContext> = new Map();
+  private performanceMetrics: Map<string, AlgorithmMetrics> = new Map();
+  private circuitBreakers: Map<string, CircuitBreaker> = new Map();
+  private loadBalancers: Map<string, LoadBalancer> = new Map();
+  private isRunning = false;
+  private maxConcurrentExecutions = parseInt(process.env.MAX_CONCURRENT_ALGORITHMS || '100');
+  private currentExecutions = 0;
+
+  constructor() {
+    super();
+    this.initializePriorityQueues();
+    this.startExecutionEngine();
+  }
+
+  // Initialize priority queues
+  private initializePriorityQueues(): void {
+    Object.values(AlgorithmPriority).forEach(priority => {
+      if (typeof priority === 'number') {
+        this.executionQueue.set(priority, []);
+      }
+    });
+  }
+
+  // Start the execution engine
+  private startExecutionEngine(): void {
+    this.isRunning = true;
+    setInterval(() => this.processQueue(), 100); // Process queue every 100ms
+  }
+
+  // Process execution queue
+  private async processQueue(): Promise<void> {
+    if (!this.isRunning || this.currentExecutions >= this.maxConcurrentExecutions) {
+      return;
+    }
+
+    // Process by priority
+    for (const priority of [AlgorithmPriority.CRITICAL, AlgorithmPriority.HIGH,
+                          AlgorithmPriority.NORMAL, AlgorithmPriority.LOW, AlgorithmPriority.BACKGROUND]) {
+      const queue = this.executionQueue.get(priority);
+      if (queue && queue.length > 0) {
+        const context = queue.shift()!;
+        const algorithmId = context.metadata.algorithmId;
+
+        if (!algorithmId) {
+          logger.error('Queued execution missing algorithmId', {
+            executionId: context.id,
+            correlationId: context.correlationId,
+            metadata: context.metadata
+          });
+          continue; // Skip this execution and try the next one
+        }
+
+        const algorithm = this.algorithms.get(algorithmId);
+        if (!algorithm) {
+          logger.error('Queued execution algorithm not found', {
+            executionId: context.id,
+            correlationId: context.correlationId,
+            algorithmId
+          });
+          continue; // Skip this execution and try the next one
+        }
+
+        this.executeImmediate(context, context.metadata.input, algorithm);
+        break;
+      }
+    }
+  }
+
+  // Register a new algorithm
+  async registerAlgorithm(definition: AlgorithmDefinition): Promise<void> {
+    try {
+      // Validate algorithm definition
+      await this.validateAlgorithmDefinition(definition);
+      
+      // Initialize performance metrics
+      this.performanceMetrics.set(definition.id, {
+        totalExecutions: 0,
+        successfulExecutions: 0,
+        failedExecutions: 0,
+        averageExecutionTime: 0,
+        p95ExecutionTime: 0,
+        p99ExecutionTime: 0,
+        lastExecutionTime: new Date(),
+        errorRate: 0,
+        throughput: 0,
+      });
+
+      // Initialize circuit breaker
+      this.circuitBreakers.set(definition.id, new CircuitBreaker({
+        failureThreshold: 5,
+        recoveryTimeout: 30000,
+        monitoringPeriod: 60000,
+      }));
+
+      // Initialize load balancer
+      this.loadBalancers.set(definition.id, new LoadBalancer());
+
+      // Store algorithm definition
+      this.algorithms.set(definition.id, definition);
+
+      logger.info('Algorithm registered successfully', {
+        algorithmId: definition.id,
+        version: definition.version,
+        category: definition.category,
+      });
+
+      this.emit('algorithmRegistered', definition);
+    } catch (error) {
+      logger.error('Failed to register algorithm', {
+        algorithmId: definition.id,
+        error: (error as Error).message,
+      });
+      throw error;
+    }
+  }
+
+  // Execute algorithm with world-class orchestration
+  async executeAlgorithm<T = any>(
+    algorithmId: string,
+    input: any,
+    context: Partial<AlgorithmContext> = {}
+  ): Promise<AlgorithmResult<T>> {
+    const startTime = performance.now();
+    const executionId = uuidv4();
+    const correlationId = context.correlationId || uuidv4();
+
+    try {
+      // Get algorithm definition
+      const algorithm = this.algorithms.get(algorithmId);
+      if (!algorithm) {
+        throw new Error(`Algorithm ${algorithmId} not found`);
+      }
+
+      if (!algorithm.isActive) {
+        throw new Error(`Algorithm ${algorithmId} is not active`);
+      }
+
+      // Create execution context
+      const executionContext: AlgorithmContext = {
+        id: executionId,
+        correlationId,
+        userId: context.userId || 'system',
+        projectId: context.projectId,
+        timestamp: new Date(),
+        priority: context.priority || algorithm.priority,
+        timeout: context.timeout || algorithm.timeout,
+        retryCount: 0,
+        maxRetries: context.maxRetries || algorithm.maxRetries,
+        metadata: {
+          ...context.metadata,
+          inputSize: JSON.stringify(input).length,
+          algorithmId: algorithmId // Store algorithmId for queued executions
+        },
+      };
+
+      // Check circuit breaker
+      const circuitBreaker = this.circuitBreakers.get(algorithmId);
+      if (circuitBreaker && !circuitBreaker.canExecute()) {
+        throw new Error(`Circuit breaker open for algorithm ${algorithmId}`);
+      }
+
+      // Queue execution if at capacity
+      if (this.currentExecutions >= this.maxConcurrentExecutions) {
+        return this.queueExecution(executionContext, input);
+      }
+
+      // Execute immediately
+      return this.executeImmediate(executionContext, input, algorithm);
+
+    } catch (error) {
+      const executionTime = performance.now() - startTime;
+
+      logger.error('Algorithm execution failed', {
+        algorithmId,
+        executionId,
+        correlationId,
+        error: (error as Error).message,
+        executionTime,
+      });
+
+      return {
+        success: false,
+        error: (error as Error).message,
+        executionTime,
+        algorithmVersion: this.algorithms.get(algorithmId)?.version || 'unknown',
+        metadata: { executionId, correlationId },
+      };
+    }
+  }
+
+  // Execute multiple algorithms in a strategy
+  async executeStrategy(
+    strategy: ExecutionStrategy,
+    input: any,
+    context: Partial<AlgorithmContext> = {}
+  ): Promise<AlgorithmResult[]> {
+    const results: AlgorithmResult[] = [];
+    const correlationId = context.correlationId || uuidv4();
+
+    try {
+      switch (strategy.type) {
+        case 'sequential':
+          results.push(...await this.executeSequential(strategy.algorithms, input, context));
+          break;
+        case 'parallel':
+          results.push(...await this.executeParallel(strategy.algorithms, input, context));
+          break;
+        case 'pipeline':
+          results.push(...await this.executePipeline(strategy.algorithms, input, context));
+          break;
+        case 'conditional':
+          results.push(...await this.executeConditional(strategy, input, context));
+          break;
+        default:
+          throw new Error(`Unknown execution strategy: ${strategy.type}`);
+      }
+
+      logger.info('Strategy execution completed', {
+        strategyType: strategy.type,
+        algorithmCount: strategy.algorithms.length,
+        correlationId,
+        successCount: results.filter(r => r.success).length,
+      });
+
+      return results;
+    } catch (error) {
+      logger.error('Strategy execution failed', {
+        strategyType: strategy.type,
+        correlationId,
+        error: (error as Error).message,
+      });
+      throw error;
+    }
+  }
+
+  // Get algorithm performance metrics
+  getAlgorithmMetrics(algorithmId: string): AlgorithmMetrics | null {
+    return this.performanceMetrics.get(algorithmId) || null;
+  }
+
+  // Get all algorithm metrics
+  getAllMetrics(): Map<string, AlgorithmMetrics> {
+    return new Map(this.performanceMetrics);
+  }
+
+  // Update performance metrics
+  private updateMetrics(algorithmId: string, executionTime: number, success: boolean): void {
+    const metrics = this.performanceMetrics.get(algorithmId);
+    if (!metrics) return;
+
+    metrics.totalExecutions++;
+    if (success) {
+      metrics.successfulExecutions++;
+    } else {
+      metrics.failedExecutions++;
+    }
+
+    // Update execution time metrics
+    metrics.averageExecutionTime = (metrics.averageExecutionTime + executionTime) / 2;
+    if (executionTime > metrics.p95ExecutionTime) {
+      metrics.p95ExecutionTime = executionTime;
+    }
+    if (executionTime > metrics.p99ExecutionTime) {
+      metrics.p99ExecutionTime = executionTime;
+    }
+
+    metrics.lastExecutionTime = new Date();
+    metrics.errorRate = metrics.failedExecutions / metrics.totalExecutions;
+
+    // Update circuit breaker
+    const circuitBreaker = this.circuitBreakers.get(algorithmId);
+    if (circuitBreaker) {
+      circuitBreaker.recordResult(success);
+    }
+  }
+
+  // Queue execution for later processing
+  private async queueExecution(context: AlgorithmContext, input: any): Promise<AlgorithmResult> {
+    // Validate required data before queuing
+    if (!context.metadata.algorithmId) {
+      logger.error('Cannot queue execution: missing algorithmId', {
+        executionId: context.id,
+        correlationId: context.correlationId,
+        metadata: context.metadata
+      });
+      throw new Error('Cannot queue execution: missing algorithmId');
+    }
+
+    context.metadata.input = input;
+
+    const queue = this.executionQueue.get(context.priority);
+    if (queue) {
+      queue.push(context);
+      logger.info('Algorithm execution queued', {
+        algorithmId: context.metadata.algorithmId,
+        executionId: context.id,
+        correlationId: context.correlationId,
+        priority: context.priority,
+        queueLength: queue.length
+      });
+    }
+
+    return {
+      success: false,
+      error: 'Execution queued due to capacity limits',
+      executionTime: 0,
+      algorithmVersion: 'unknown',
+      metadata: {
+        queued: true,
+        queuePosition: queue?.length || 0,
+        algorithmId: context.metadata.algorithmId
+      },
+    };
+  }
+
+  // Execute algorithm immediately
+  private async executeImmediate<T>(
+    context: AlgorithmContext,
+    input: any,
+    algorithm: AlgorithmDefinition
+  ): Promise<AlgorithmResult<T>> {
+    // Validate algorithm parameter
+    if (!algorithm || !algorithm.id) {
+      logger.error('executeImmediate called with invalid algorithm', {
+        executionId: context.id,
+        correlationId: context.correlationId,
+        algorithmId: context.metadata.algorithmId,
+        algorithm: algorithm ? { id: algorithm.id, hasId: !!algorithm.id } : 'undefined'
+      });
+      throw new Error(`Invalid algorithm parameter: ${algorithm}`);
+    }
+
+    const startTime = performance.now();
+    this.currentExecutions++;
+    this.activeExecutions.set(context.id, context);
+
+    try {
+      // Simulate algorithm execution (replace with actual algorithm calls)
+      const result = await this.callAlgorithm(algorithm.id, input, context);
+      const executionTime = performance.now() - startTime;
+
+      this.updateMetrics(algorithm.id, executionTime, true);
+      this.activeExecutions.delete(context.id);
+      this.currentExecutions--;
+
+      return {
+        success: true,
+        data: result,
+        executionTime,
+        algorithmVersion: algorithm.version,
+        metadata: { executionId: context.id, correlationId: context.correlationId },
+      };
+    } catch (error) {
+      const executionTime = performance.now() - startTime;
+      this.updateMetrics(algorithm.id, executionTime, false);
+      this.activeExecutions.delete(context.id);
+      this.currentExecutions--;
+
+      throw error;
+    }
+  }
+
+  // Call actual algorithm implementation
+  private async callAlgorithm(algorithmId: string, input: any, context: AlgorithmContext): Promise<any> {
+    // This would be replaced with actual algorithm implementations
+    // For now, simulate different algorithm behaviors
+    switch (algorithmId) {
+      case 'cost-estimation-v1':
+        return this.simulateCostEstimation(input);
+      case 'floor-plan-analysis-v1':
+        return this.simulateFloorPlanAnalysis(input);
+      default:
+        throw new Error(`Algorithm ${algorithmId} not implemented`);
+    }
+  }
+
+  // Simulate cost estimation algorithm
+  private async simulateCostEstimation(input: any): Promise<any> {
+    await new Promise(resolve => setTimeout(resolve, Math.random() * 2000 + 500));
+    return {
+      totalCost: Math.random() * 1000000 + 500000,
+      breakdown: [],
+      confidence: 0.85 + Math.random() * 0.1,
+    };
+  }
+
+  // Simulate floor plan analysis algorithm
+  private async simulateFloorPlanAnalysis(input: any): Promise<any> {
+    await new Promise(resolve => setTimeout(resolve, Math.random() * 3000 + 1000));
+    return {
+      rooms: [],
+      totalArea: Math.random() * 500 + 100,
+      confidence: 0.9 + Math.random() * 0.05,
+    };
+  }
+
+  // Validate algorithm definition
+  private async validateAlgorithmDefinition(definition: AlgorithmDefinition): Promise<void> {
+    if (!definition.id || !definition.name || !definition.version) {
+      throw new Error('Algorithm definition must include id, name, and version');
+    }
+
+    if (!Object.values(AlgorithmCategory).includes(definition.category)) {
+      throw new Error('Invalid algorithm category');
+    }
+
+    if (!Object.values(AlgorithmPriority).includes(definition.priority)) {
+      throw new Error('Invalid algorithm priority');
+    }
+  }
+
+  // Execute algorithms sequentially
+  private async executeSequential(
+    algorithmIds: string[],
+    input: any,
+    context: Partial<AlgorithmContext>
+  ): Promise<AlgorithmResult[]> {
+    const results: AlgorithmResult[] = [];
+    let currentInput = input;
+
+    for (const algorithmId of algorithmIds) {
+      const result = await this.executeAlgorithm(algorithmId, currentInput, context);
+      results.push(result);
+
+      if (!result.success) {
+        break; // Stop on first failure
+      }
+
+      currentInput = result.data; // Use output as input for next algorithm
+    }
+
+    return results;
+  }
+
+  // Execute algorithms in parallel
+  private async executeParallel(
+    algorithmIds: string[],
+    input: any,
+    context: Partial<AlgorithmContext>
+  ): Promise<AlgorithmResult[]> {
+    const promises = algorithmIds.map(algorithmId =>
+      this.executeAlgorithm(algorithmId, input, context)
+    );
+
+    return Promise.all(promises);
+  }
+
+  // Execute algorithms in pipeline
+  private async executePipeline(
+    algorithmIds: string[],
+    input: any,
+    context: Partial<AlgorithmContext>
+  ): Promise<AlgorithmResult[]> {
+    const results: AlgorithmResult[] = [];
+    let currentInput = input;
+
+    for (const algorithmId of algorithmIds) {
+      const result = await this.executeAlgorithm(algorithmId, currentInput, context);
+      results.push(result);
+
+      if (result.success && result.data) {
+        currentInput = result.data;
+      }
+    }
+
+    return results;
+  }
+
+  // Execute algorithms conditionally
+  private async executeConditional(
+    strategy: ExecutionStrategy,
+    input: any,
+    context: Partial<AlgorithmContext>
+  ): Promise<AlgorithmResult[]> {
+    // Implement conditional logic based on strategy.conditions
+    // For now, execute all algorithms
+    return this.executeParallel(strategy.algorithms, input, context);
+  }
+}
+
+// Export singleton instance
+export const algorithmOrchestrator = new AlgorithmOrchestrator();

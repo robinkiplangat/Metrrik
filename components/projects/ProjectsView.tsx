@@ -1,7 +1,8 @@
 
 import React, { useState, useMemo } from 'react';
-import type { Project } from '../../types';
+import type { Project } from '../../services/shared/types';
 import Icon from '../ui/Icon';
+import ConfirmationDialog from '../ui/ConfirmationDialog';
 
 type SortableKeys = keyof Pick<Project, 'name' | 'client' | 'lastModified'>;
 const ALL_STATUSES: (Project['status'] | 'All')[] = ['All', 'Draft', 'In Review', 'Completed'];
@@ -18,12 +19,14 @@ const getStatusClasses = (status: Project['status']) => {
 interface ProjectsViewProps {
   projects: Project[];
   onSelectProject: (project: Project) => void;
+  onDeleteProject?: (projectId: string) => void;
 }
 
-const ProjectsView: React.FC<ProjectsViewProps> = ({ projects, onSelectProject }) => {
+const ProjectsView: React.FC<ProjectsViewProps> = ({ projects, onSelectProject, onDeleteProject }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<Project['status'] | 'All'>('All');
     const [sortConfig, setSortConfig] = useState<{ key: SortableKeys; direction: 'ascending' | 'descending' }>({ key: 'lastModified', direction: 'descending' });
+    const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; project: Project | null }>({ isOpen: false, project: null });
 
     const sortedAndFilteredProjects = useMemo(() => {
         let filtered = projects.filter(p => {
@@ -52,6 +55,21 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({ projects, onSelectProject }
             direction = 'descending';
         }
         setSortConfig({ key, direction });
+    };
+
+    const handleDeleteProject = (project: Project) => {
+        setDeleteConfirm({ isOpen: true, project });
+    };
+
+    const confirmDelete = () => {
+        if (deleteConfirm.project && onDeleteProject) {
+            onDeleteProject(deleteConfirm.project.id);
+        }
+        setDeleteConfirm({ isOpen: false, project: null });
+    };
+
+    const cancelDelete = () => {
+        setDeleteConfirm({ isOpen: false, project: null });
     };
 
     return (
@@ -122,7 +140,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({ projects, onSelectProject }
                                             <div className="py-1" role="menu" aria-orientation="vertical">
                                                 <a href="#" onClick={(e) => { e.preventDefault(); alert('Renaming...'); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">Rename</a>
                                                 <a href="#" onClick={(e) => { e.preventDefault(); alert('Duplicating...'); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">Duplicate</a>
-                                                <a href="#" onClick={(e) => { e.preventDefault(); alert('Deleting...'); }} className="block px-4 py-2 text-sm text-red-700 hover:bg-red-50" role="menuitem">Delete</a>
+                                                <a href="#" onClick={(e) => { e.preventDefault(); handleDeleteProject(project); }} className="block px-4 py-2 text-sm text-red-700 hover:bg-red-50" role="menuitem">Delete</a>
                                             </div>
                                         </div>
                                     </details>
@@ -138,6 +156,18 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({ projects, onSelectProject }
                     </div>
                 )}
             </div>
+            
+            {/* Confirmation Dialog */}
+            <ConfirmationDialog
+                isOpen={deleteConfirm.isOpen}
+                title="Delete Project"
+                message={`Are you sure you want to delete "${deleteConfirm.project?.name}"? This action cannot be undone and will permanently remove the project and all its associated documents.`}
+                confirmText="Delete Project"
+                cancelText="Cancel"
+                onConfirm={confirmDelete}
+                onCancel={cancelDelete}
+                variant="danger"
+            />
         </div>
     );
 };
