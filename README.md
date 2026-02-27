@@ -4,21 +4,8 @@
 
 Metrrik is an AI-native platform designed to serve as an intelligent co-pilot for Quantity Surveyors, contractors, and builders. It streamlines the creation of essential construction documentation, from preliminary estimates to detailed Bills of Quantities (BQs), by leveraging the power of the Google Gemini API.
 
-## Key Features
-
-- **AI-Powered Chat**: Engage in a natural conversation with an AI assistant to get quick cost estimates, draft proposals, and get answers to complex construction-related questions.
-- **Intelligent Document Generation**: Effortlessly create professional documents like Proposals, BQ Drafts, and Site Reports using AI prompts or pre-defined templates.
-- **Floor Plan Analysis**: Upload architectural drawings (images/PDFs) and have the AI automatically analyze them to generate a detailed and editable Bill of Quantities.
-- **Interactive BQ Editor**: Fine-tune AI-generated BQs. The editor provides visual feedback by highlighting corresponding elements directly on the uploaded floor plan.
-# Metrrik: Your Co-Pilot for Construction Intelligence
-
-![Metrrik Dashboard](https://i.imgur.com/example-screenshot.png) <!-- Replace with an actual screenshot -->
-
-Metrrik is an expert AI assistant for Quantity Surveyors in Kenya. It acts as an intelligent co-pilot, helping with tasks like creating cost estimates, drafting Bills of Quantities (BQs), and generating professional construction documents.
-
 ## Features
-
-- **AI-Powered Analysis:** Use Google Gemini to analyze floor plans and generate detailed reports.
+- **AI-Powered Analysis:** Use AI to analyze floor plans and generate detailed reports.
 - **Project Management:** Organize your construction projects, documents, and measurements in one place.
 - **Cost Estimation:** Generate preliminary estimates and detailed BQs with the help of AI.
 - **Knowledge Base:** Access a comprehensive library of construction materials, rates, and standards.
